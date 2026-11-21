@@ -1,6 +1,7 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
+from ai.schemas import ExtractedRequirement, ExtractionResult, LinkingResult, ProposedLink
 from engine.models import Blob, Link, Object, Proposal, Typing
 
 
@@ -8,6 +9,31 @@ def test_workspace_page_renders(client, demo_context):
     response = client.get(reverse("workspace"))
 
     assert response.status_code == 200
+
+
+def test_decide_proposal_accepts_extraction_and_chains_link_proposal(
+    client, demo_context, demo_commande, monkeypatch
+):
+    from engine.services.propose import record_ai_proposal
+
+    space, layer, document_type = demo_context
+    proposal = record_ai_proposal(
+        "extraction-exigences",
+        {"space_id": str(space.id), "layer_id": str(layer.id), "text": "..."},
+        {"requirements": [{"name": "délai obligatoire", "field": "delai", "rule": "obligatoire", "quote": "..."}]},
+        "qwen2.5:1.5b",
+        1000,
+    )
+    fake_links = LinkingResult(links=[ProposedLink(table_name="commande", nature="correspondence", confidence=0.9)])
+    monkeypatch.setattr("ui.views.propose_links_ai", lambda exigence, candidates: fake_links)
+
+    response = client.post(reverse("decide-proposal", args=[proposal.id]), {"decision": "accepted"})
+
+    assert response.status_code == 200
+    assert Object.objects.filter(current_version__attributes__name="délai obligatoire").exists()
+    link_proposal = Proposal.objects.get(operation="proposition-liens")
+    assert link_proposal.output["links"][0]["table_name"] == "commande"
+    assert b"commande" in response.content
 
 
 def test_object_browse_lists_objects_and_links(client, demo_context):
@@ -278,10 +304,21 @@ def test_type_object_requires_layer(client, demo_context, demo_second_type):
     assert b"calque" in response.content
 
 
-def test_submit_prompt_records_pending_proposal(client, demo_context):
+def test_submit_prompt_extracts_requirements_into_a_pending_proposal(client, demo_context, monkeypatch):
+    fake_result = ExtractionResult(
+        requirements=[
+            ExtractedRequirement(
+                name="délai obligatoire", field="delai", rule="obligatoire", quote="le délai doit être facultatif"
+            )
+        ]
+    )
+    monkeypatch.setattr("ui.views.extract_requirements", lambda text: fake_result)
+
     response = client.post(reverse("submit-prompt"), {"text": "le délai doit être facultatif"})
 
     assert response.status_code == 200
-    proposal = Proposal.objects.get(operation="manual-prompt")
+    proposal = Proposal.objects.get(operation="extraction-exigences")
     assert proposal.decision == Proposal.Decision.PENDING
-    assert b"manual-prompt" in response.content
+    assert proposal.output["requirements"][0]["name"] == "délai obligatoire"
+    assert b"d\xc3\xa9lai obligatoire" in response.content
+    assert b"accepter" in response.content

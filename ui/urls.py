@@ -17,5 +17,6 @@ urlpatterns = [
     path("objects/<uuid:object_id>/edit/", views.apply_view_edit_view, name="apply-view-edit"),
     path("log/", views.event_log, name="event-log"),
     path("proposals/", views.submit_prompt, name="submit-prompt"),
+    path("proposals/<uuid:proposal_id>/decide/", views.decide_proposal_view, name="decide-proposal"),
     path("blobs/<str:sha256>/", views.blob_content, name="blob-content"),
 ]

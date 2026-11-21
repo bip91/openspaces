@@ -1,9 +1,14 @@
+import time
+
 import markdown as markdown_lib
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
+from ai.extraction import extract_requirements
+from ai.linking import propose_links as propose_links_ai
 from bus.core import call as bus_call
 from bus.models import CallLog
 from bus.registry import CAPABILITIES, CLIENTS
@@ -12,7 +17,8 @@ from engine.services.blob import store_blob
 from engine.services.create import create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
 from engine.services.link import link_objects as link_objects_service
-from engine.services.propose import record_proposal
+from engine.services.propose import decide_proposal as decide_proposal_service
+from engine.services.propose import record_ai_proposal
 from engine.services.render import apply_view_edit as apply_view_edit_service
 from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
@@ -297,11 +303,75 @@ def event_log(request):
 
 @require_POST
 def submit_prompt(request):
+    """Extraction d'exigences (lot 4) depuis un texte collé (ex. un mail
+    fonctionnel). Journalise une Proposal PENDING ; rien n'est créé tant
+    qu'elle n'est pas décidée (voir ``decide_proposal_view``)."""
     space, layer, document_type, user = demo_context()
     text = request.POST.get("text", "").strip()
     if text:
-        record_proposal("manual-prompt", {"text": text})
+        started = time.perf_counter()
+        result = extract_requirements(text)
+        duration_ms = int((time.perf_counter() - started) * 1000)
+        record_ai_proposal(
+            "extraction-exigences",
+            {"space_id": str(space.id), "layer_id": str(layer.id), "text": text},
+            result.model_dump(),
+            settings.AI_MODEL_NAME,
+            duration_ms,
+        )
     return render(request, "ui/_event_log.html", _log_context(space))
+
+
+@require_POST
+def decide_proposal_view(request, proposal_id):
+    """Décide d'une Proposal (accepter/rejeter). Si c'est une extraction
+    acceptée, enchaîne automatiquement une proposition de liens par
+    Exigence créée contre les Table du space — « exigences extraites,
+    liens proposés » sans étape manuelle supplémentaire."""
+    space, layer, document_type, user = demo_context()
+    decision = request.POST.get("decision", "")
+    errors = []
+
+    try:
+        proposal = Proposal.objects.get(pk=proposal_id)
+    except Proposal.DoesNotExist:
+        raise Http404
+
+    try:
+        result = decide_proposal_service(proposal.id, decision, author=user)
+    except ValueError as exc:
+        errors.append(str(exc))
+        result = {"created": []}
+
+    if proposal.operation == "extraction-exigences" and decision == Proposal.Decision.ACCEPTED:
+        table_type = ObjectType.objects.get(name=DEMO_TABLE_TYPE_NAME, scope=ObjectType.Scope.BASE)
+        candidate_tables = [
+            {
+                "name": obj.current_version.attributes.get("name"),
+                "fields": obj.current_version.attributes.get("fields", []),
+            }
+            for obj in Object.objects.filter(space=space, base_type=table_type).select_related("current_version")
+        ]
+        for exigence in result["created"]:
+            started = time.perf_counter()
+            linking_result = propose_links_ai(exigence.current_version.attributes, candidate_tables)
+            duration_ms = int((time.perf_counter() - started) * 1000)
+            record_ai_proposal(
+                "proposition-liens",
+                {
+                    "space_id": str(space.id),
+                    "layer_id": str(layer.id),
+                    "exigence_id": str(exigence.id),
+                    "exigence_attributes": exigence.current_version.attributes,
+                },
+                linking_result.model_dump(),
+                settings.AI_MODEL_NAME,
+                duration_ms,
+            )
+
+    context = _log_context(space)
+    context["errors"] = errors
+    return render(request, "ui/_event_log.html", context)
 
 
 def _object_detail_context(obj, errors=None):

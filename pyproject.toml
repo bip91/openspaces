@@ -10,6 +10,7 @@ dependencies = [
     "pgvector>=0.3",
     "mcp>=2.0",
     "markdown>=3.7",
+    "pydantic-ai-slim[openai]>=2.71",
 ]
 
 [project.optional-dependencies]

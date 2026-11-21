@@ -44,6 +44,9 @@ STATIC_URL = "static/"
 
 BLOB_STORAGE_ROOT = os.environ.get("BLOB_STORAGE_ROOT", str(BASE_DIR / "var" / "blobs"))
 
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+AI_MODEL_NAME = os.environ.get("AI_MODEL_NAME", "qwen2.5:1.5b")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

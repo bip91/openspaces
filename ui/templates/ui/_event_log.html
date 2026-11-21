@@ -1,3 +1,6 @@
+{% if errors %}
+  <div class="errors">{% for error in errors %}<div>{{ error }}</div>{% endfor %}</div>
+{% endif %}
 <section>
   <h2>Divergences ouvertes</h2>
   {% for divergence in divergences %}
@@ -11,8 +14,44 @@
   {% for proposal in proposals %}
     <div class="log-row">
       <strong>{{ proposal.operation }}</strong>
-      <span class="muted">— {{ proposal.decision }}</span>
-      <div class="muted">{{ proposal.input.text|default:proposal.input|truncatechars:140 }}</div>
+      <span class="muted">
+        — {{ proposal.decision }}
+        {% if proposal.model %} · {{ proposal.model }} ({{ proposal.duration_ms }} ms){% endif %}
+      </span>
+
+      {% if proposal.operation == "extraction-exigences" %}
+        <ul>
+          {% for req in proposal.output.requirements %}
+            <li>
+              {{ req.name }}{% if req.field %} — {{ req.field }}{% endif %}{% if req.rule %} ({{ req.rule }}){% endif %}
+              <div class="muted">« {{ req.quote }} »</div>
+            </li>
+          {% empty %}
+            <li class="muted">Aucune exigence détectée.</li>
+          {% endfor %}
+        </ul>
+      {% elif proposal.operation == "proposition-liens" %}
+        <ul>
+          {% for link in proposal.output.links %}
+            <li>{{ link.table_name }} <span class="muted">({{ link.nature }}, confiance {{ link.confidence }})</span></li>
+          {% empty %}
+            <li class="muted">Aucun lien proposé.</li>
+          {% endfor %}
+        </ul>
+      {% elif proposal.operation == "manual-prompt" %}
+        <div class="muted">{{ proposal.input.text|truncatechars:140 }}</div>
+      {% endif %}
+
+      {% if proposal.decision == "pending" and proposal.output %}
+        <form hx-post="{% url 'decide-proposal' proposal.id %}" hx-target="#log" hx-swap="innerHTML" style="display:inline">
+          {% csrf_token %}<input type="hidden" name="decision" value="accepted">
+          <button type="submit">accepter</button>
+        </form>
+        <form hx-post="{% url 'decide-proposal' proposal.id %}" hx-target="#log" hx-swap="innerHTML" style="display:inline">
+          {% csrf_token %}<input type="hidden" name="decision" value="rejected">
+          <button type="submit">rejeter</button>
+        </form>
+      {% endif %}
     </div>
   {% empty %}
     <p class="muted">Aucune proposition.</p>
