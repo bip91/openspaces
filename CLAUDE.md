@@ -7,7 +7,7 @@ Le but n'est pas un produit : la maquette vérifie quatre hypothèses (voir la s
 
 - Spec de référence : « Environnement objet collaboratif — expression de besoin et spec maquette » (Claude Docs, exportée en Markdown dans `docs/spec.md`).
 - Problème de fond : la manière dont l'utilisateur interagit avec l'information. Le moteur en est la condition ; l'interaction sera traitée après la maquette.
-- État : lots 1 (moteur), 2 (vues) et 3 — calques et aspects — faits. Le noyau du bus de coordination (aussi listé au lot 3) reste à faire, dans une passe séparée.
+- État : lots 1 (moteur), 2 (vues) et 3 (calques, aspects, noyau du bus de coordination) faits. Lot 4 (IA) et lot 5 (test) restent à faire.
 
 ## Langue
 
