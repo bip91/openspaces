@@ -1,7 +1,7 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 
-from engine.models import Blob, Object, Proposal
+from engine.models import Blob, Link, Object, Proposal, Typing
 
 
 def test_workspace_page_renders(client, demo_context):
@@ -32,6 +32,29 @@ def test_import_object_stores_content_and_serves_it(client, demo_context, settin
     response = client.get(reverse("blob-content", args=[blob.sha256]))
     assert response.status_code == 200
     assert b"".join(response.streaming_content) == content
+
+
+def test_import_object_with_same_name_creates_new_version(client, demo_context, settings, tmp_path):
+    settings.BLOB_STORAGE_ROOT = str(tmp_path)
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("spec.md", b"v1")})
+
+    response = client.post(reverse("import-object"), {"files": SimpleUploadedFile("spec.md", b"v2 plus long")})
+
+    assert response.status_code == 200
+    assert Object.objects.filter(current_version__attributes__name="spec.md").count() == 1
+    obj = Object.objects.get(current_version__attributes__name="spec.md")
+    assert obj.current_version.number == 2
+    assert obj.current_version.attributes["size"] == len(b"v2 plus long")
+
+
+def test_import_object_with_same_name_and_same_content_does_not_bump_version(client, demo_context, settings, tmp_path):
+    settings.BLOB_STORAGE_ROOT = str(tmp_path)
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("spec.md", b"contenu identique")})
+
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("spec.md", b"contenu identique")})
+
+    obj = Object.objects.get(current_version__attributes__name="spec.md")
+    assert obj.current_version.number == 1
 
 
 def test_update_object_renames_it(client, demo_context, settings, tmp_path):
@@ -87,6 +110,89 @@ def test_update_object_reports_conflict_without_mutating(client, demo_context, s
     obj.refresh_from_db()
     assert obj.current_version.number == 2
     assert obj.current_version.attributes["name"] == "v2"
+
+
+def test_link_object_creates_active_link_and_shows_it(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"b")})
+    source = Object.objects.get(current_version__attributes__name="a.md")
+    target = Object.objects.get(current_version__attributes__name="b.md")
+
+    response = client.post(
+        reverse("link-object", args=[source.id]),
+        {"target": target.id, "nature": "correspondence"},
+    )
+
+    assert response.status_code == 200
+    link = Link.objects.get(source=source, target=target)
+    assert link.nature == "correspondence"
+    assert link.status == Link.Status.ACTIVE
+    assert b"correspondence" in response.content
+    assert b"b.md" in response.content
+
+
+def test_link_object_requires_nature(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"b")})
+    source = Object.objects.get(current_version__attributes__name="a.md")
+    target = Object.objects.get(current_version__attributes__name="b.md")
+
+    response = client.post(reverse("link-object", args=[source.id]), {"target": target.id, "nature": ""})
+
+    assert response.status_code == 200
+    assert not Link.objects.filter(source=source, target=target).exists()
+    assert b"nature" in response.content
+
+
+def test_link_object_requires_target(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    source = Object.objects.get(current_version__attributes__name="a.md")
+
+    response = client.post(reverse("link-object", args=[source.id]), {"target": "", "nature": "correspondence"})
+
+    assert response.status_code == 200
+    assert not Link.objects.filter(source=source).exists()
+    assert b"cible" in response.content
+
+
+def test_type_object_requires_type(client, demo_context, demo_layer_fonctionnel):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    obj = Object.objects.get(current_version__attributes__name="a.md")
+
+    response = client.post(
+        reverse("type-object", args=[obj.id]),
+        {"layer": demo_layer_fonctionnel.id, "type": ""},
+    )
+
+    assert response.status_code == 200
+    assert not Typing.objects.filter(object=obj).exists()
+    assert b"type" in response.content
+
+
+def test_type_object_adds_typing_and_shows_it(client, demo_context, demo_layer_fonctionnel, demo_second_type):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    obj = Object.objects.get(current_version__attributes__name="a.md")
+
+    response = client.post(
+        reverse("type-object", args=[obj.id]),
+        {"layer": demo_layer_fonctionnel.id, "type": demo_second_type.id},
+    )
+
+    assert response.status_code == 200
+    assert Typing.objects.filter(object=obj, layer=demo_layer_fonctionnel, type=demo_second_type).exists()
+    assert b"fonctionnel" in response.content
+    assert b"Exigence" in response.content
+
+
+def test_type_object_requires_layer(client, demo_context, demo_second_type):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    obj = Object.objects.get(current_version__attributes__name="a.md")
+
+    response = client.post(reverse("type-object", args=[obj.id]), {"layer": "", "type": demo_second_type.id})
+
+    assert response.status_code == 200
+    assert not Typing.objects.filter(object=obj).exists()
+    assert b"calque" in response.content
 
 
 def test_submit_prompt_records_pending_proposal(client, demo_context):

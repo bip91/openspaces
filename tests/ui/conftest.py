@@ -2,7 +2,14 @@ import pytest
 from django.contrib.auth.models import User
 
 from engine.models import Layer, ObjectType, Space
-from ui.demo import DEMO_LAYER_ROLE, DEMO_SPACE_NAME, DEMO_TYPE_NAME, DEMO_USERNAME
+from ui.demo import (
+    DEMO_LAYER_ROLE,
+    DEMO_LAYER_ROLE_FONCTIONNEL,
+    DEMO_SECOND_TYPE_NAME,
+    DEMO_SPACE_NAME,
+    DEMO_TYPE_NAME,
+    DEMO_USERNAME,
+)
 
 
 @pytest.fixture
@@ -18,6 +25,20 @@ def demo_space(demo_user):
 @pytest.fixture
 def demo_layer(demo_space, demo_user):
     return Layer.objects.create(space=demo_space, owner=demo_user, role=DEMO_LAYER_ROLE)
+
+
+@pytest.fixture
+def demo_layer_fonctionnel(demo_space, demo_user):
+    return Layer.objects.create(space=demo_space, owner=demo_user, role=DEMO_LAYER_ROLE_FONCTIONNEL)
+
+
+@pytest.fixture
+def demo_second_type(db):
+    return ObjectType.objects.create(
+        name=DEMO_SECOND_TYPE_NAME,
+        scope=ObjectType.Scope.BASE,
+        schema={"type": "object", "properties": {"name": {"type": "string"}}},
+    )
 
 
 @pytest.fixture
@@ -38,5 +59,5 @@ def demo_type(db):
 
 
 @pytest.fixture
-def demo_context(demo_space, demo_layer, demo_type):
+def demo_context(demo_space, demo_layer, demo_layer_fonctionnel, demo_type, demo_second_type):
     return demo_space, demo_layer, demo_type

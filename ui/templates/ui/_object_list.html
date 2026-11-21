@@ -17,6 +17,40 @@
         <button type="submit">enregistrer</button>
       </form>
     </details>
+    <details id="link-{{ object.id }}" hx-preserve="true">
+      <summary>lier à…</summary>
+      <form hx-post="{% url 'link-object' object.id %}" hx-target="#object-list" hx-swap="innerHTML">
+        {% csrf_token %}
+        <select name="target">
+          {% for other in objects %}
+            {% if other.id != object.id %}
+              <option value="{{ other.id }}">{{ other.current_version.attributes.name|default:other.id }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+        <input type="text" name="nature" placeholder="nature (ex. correspondence)">
+        <button type="submit">lier</button>
+      </form>
+    </details>
+    {% for link in object.links_from.all %}
+      <div class="muted">↳ {{ link.nature }} → {{ link.target.current_version.attributes.name }}</div>
+    {% endfor %}
+    <details id="type-{{ object.id }}" hx-preserve="true">
+      <summary>typer</summary>
+      <form hx-post="{% url 'type-object' object.id %}" hx-target="#object-list" hx-swap="innerHTML">
+        {% csrf_token %}
+        <select name="layer">
+          {% for a_layer in layers %}<option value="{{ a_layer.id }}">{{ a_layer.role }}</option>{% endfor %}
+        </select>
+        <select name="type">
+          {% for a_type in types %}<option value="{{ a_type.id }}">{{ a_type.name }}</option>{% endfor %}
+        </select>
+        <button type="submit">typer</button>
+      </form>
+    </details>
+    {% for typing in object.typings.all %}
+      <div class="muted">▸ {{ typing.layer.role }} : {{ typing.type.name }}</div>
+    {% endfor %}
   </div>
 {% empty %}
   <p class="muted">Aucun objet pour l'instant — dépose un fichier ci-dessus.</p>

@@ -1,27 +1,47 @@
+from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from engine.models import Blob, Event, Object, Proposal
+from engine.models import Blob, Event, Layer, Object, ObjectType, Proposal
 from engine.services.blob import store_blob
 from engine.services.create import create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
+from engine.services.link import link_objects as link_objects_service
 from engine.services.propose import record_proposal
+from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
 from ui.demo import demo_context
+
+
+def _lookup(queryset, pk_value):
+    """get(pk=...) qui renvoie None plutôt que de planter sur un pk vide/invalide."""
+    if not pk_value:
+        return None
+    try:
+        return queryset.get(pk=pk_value)
+    except (queryset.model.DoesNotExist, ValidationError, ValueError):
+        return None
 
 
 def _object_list_context(space):
     objects = list(
         Object.objects.filter(space=space)
         .select_related("base_type", "current_version")
-        .prefetch_related("current_version__provenances__source_blob")
+        .prefetch_related(
+            "current_version__provenances__source_blob",
+            "links_from__target__current_version",
+            "typings__layer",
+            "typings__type",
+        )
         .order_by("-created_at")[:50]
     )
     for obj in objects:
         provenances = list(obj.current_version.provenances.all())
         obj.blob = provenances[0].source_blob if provenances else None
-    return {"objects": objects}
+    layers = Layer.objects.filter(space=space).order_by("role")
+    types = ObjectType.objects.filter(scope=ObjectType.Scope.BASE).order_by("name")
+    return {"objects": objects, "layers": layers, "types": types}
 
 
 def _log_context(space):
@@ -62,14 +82,40 @@ def import_object(request):
             "mime_type": mime_type,
             "size": uploaded.size,
         }
-        try:
-            create_object(
-                space,
-                document_type,
-                attributes,
-                author=user,
-                provenance={"source_blob": blob, "operation": "import-fichier"},
+        provenance = {"source_blob": blob, "operation": "import-fichier"}
+
+        # Un dépôt du même nom dans cet espace est traité comme une nouvelle version
+        # de l'objet existant, pas comme un objet distinct.
+        existing = (
+            Object.objects.filter(
+                space=space,
+                base_type=document_type,
+                current_version__attributes__name=uploaded.name,
             )
+            .select_related("current_version")
+            .first()
+        )
+        existing_provenance = existing.current_version.provenances.first() if existing else None
+        unchanged = (
+            existing_provenance
+            and existing_provenance.source_blob_id == blob.sha256
+        )
+
+        try:
+            if unchanged:
+                pass  # même contenu : rien à faire, pas de version inutile
+            elif existing:
+                update_object_service(
+                    existing.id,
+                    existing.current_version.number,
+                    attributes,
+                    author=user,
+                    provenance=provenance,
+                )
+            else:
+                create_object(space, document_type, attributes, author=user, provenance=provenance)
+        except VersionConflict:
+            errors.append(f"{uploaded.name} : modifié entre-temps, réessaie le dépôt.")
         except SchemaValidationError as exc:
             errors.append(f"{uploaded.name} : {'; '.join(exc.errors)}")
 
@@ -108,6 +154,54 @@ def update_object_view(request, object_id):
         )
     except SchemaValidationError as exc:
         errors.append(f"{attributes['name']} : {'; '.join(exc.errors)}")
+
+    context = _object_list_context(space)
+    context["errors"] = errors
+    return render(request, "ui/_object_list.html", context)
+
+
+@require_POST
+def link_object_view(request, object_id):
+    space, layer, document_type, user = demo_context()
+    errors = []
+    try:
+        source = Object.objects.get(pk=object_id, space=space)
+    except Object.DoesNotExist:
+        raise Http404
+
+    nature = request.POST.get("nature", "").strip()
+    target = _lookup(Object.objects.filter(space=space), request.POST.get("target"))
+
+    if not nature:
+        errors.append("indique une nature de lien.")
+    elif not target:
+        errors.append("choisis un objet cible.")
+    else:
+        link_objects_service(nature, source, target, layer=layer, author=user)
+
+    context = _object_list_context(space)
+    context["errors"] = errors
+    return render(request, "ui/_object_list.html", context)
+
+
+@require_POST
+def type_object_view(request, object_id):
+    space, layer, document_type, user = demo_context()
+    errors = []
+    try:
+        obj = Object.objects.get(pk=object_id, space=space)
+    except Object.DoesNotExist:
+        raise Http404
+
+    target_layer = _lookup(Layer.objects.filter(space=space), request.POST.get("layer"))
+    object_type = _lookup(ObjectType.objects.filter(scope=ObjectType.Scope.BASE), request.POST.get("type"))
+
+    if not target_layer:
+        errors.append("choisis un calque.")
+    elif not object_type:
+        errors.append("choisis un type.")
+    else:
+        set_typing_service(obj, target_layer, object_type, author=user)
 
     context = _object_list_context(space)
     context["errors"] = errors

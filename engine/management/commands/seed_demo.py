@@ -2,7 +2,14 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
 from engine.models import Layer, ObjectType, Space
-from ui.demo import DEMO_LAYER_ROLE, DEMO_SPACE_NAME, DEMO_TYPE_NAME, DEMO_USERNAME
+from ui.demo import (
+    DEMO_LAYER_ROLE,
+    DEMO_LAYER_ROLE_FONCTIONNEL,
+    DEMO_SECOND_TYPE_NAME,
+    DEMO_SPACE_NAME,
+    DEMO_TYPE_NAME,
+    DEMO_USERNAME,
+)
 
 
 class Command(BaseCommand):
@@ -13,6 +20,9 @@ class Command(BaseCommand):
         space, space_created = Space.objects.get_or_create(name=DEMO_SPACE_NAME, defaults={"owner": user})
         layer, layer_created = Layer.objects.get_or_create(
             space=space, role=DEMO_LAYER_ROLE, defaults={"owner": user}
+        )
+        layer_fonctionnel, layer_fonctionnel_created = Layer.objects.get_or_create(
+            space=space, role=DEMO_LAYER_ROLE_FONCTIONNEL, defaults={"owner": user}
         )
         document_type, type_created = ObjectType.objects.get_or_create(
             name=DEMO_TYPE_NAME,
@@ -29,6 +39,11 @@ class Command(BaseCommand):
                 }
             },
         )
+        exigence_type, exigence_type_created = ObjectType.objects.get_or_create(
+            name=DEMO_SECOND_TYPE_NAME,
+            scope=ObjectType.Scope.BASE,
+            defaults={"schema": {"type": "object", "properties": {"name": {"type": "string"}}}},
+        )
 
         created = [
             name
@@ -36,7 +51,9 @@ class Command(BaseCommand):
                 ("utilisateur demo", user_created),
                 ("espace démo", space_created),
                 ("calque développeur", layer_created),
+                ("calque fonctionnel", layer_fonctionnel_created),
                 ("type Document", type_created),
+                ("type Exigence", exigence_type_created),
             )
             if was_created
         ]
