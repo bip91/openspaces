@@ -4,7 +4,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from engine.models import Blob, Divergence, Event, Layer, Object, ObjectType, Proposal, ViewTemplate
+from engine.models import Blob, Divergence, Event, Layer, Link, Object, ObjectType, Proposal, ViewTemplate
 from engine.services.blob import store_blob
 from engine.services.create import create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
@@ -77,6 +77,22 @@ def workspace(request):
 def object_list(request):
     space, layer, document_type, user = demo_context()
     return render(request, "ui/_object_list.html", _object_list_context(space))
+
+
+@require_GET
+def object_browse(request):
+    space, layer, document_type, user = demo_context()
+    objects = (
+        Object.objects.filter(space=space)
+        .select_related("base_type", "current_version")
+        .order_by("base_type__name", "-created_at")
+    )
+    links = (
+        Link.objects.filter(source__space=space)
+        .select_related("source__current_version", "target__current_version", "layer")
+        .order_by("-created_at")
+    )
+    return render(request, "ui/object_browse.html", {"space": space, "objects": objects, "links": links})
 
 
 @require_POST
@@ -244,13 +260,15 @@ def submit_prompt(request):
 
 def _object_detail_context(obj, errors=None):
     obj.open_divergences = list(obj.divergences.filter(status=Divergence.Status.OPEN))
+    links_out = list(obj.links_from.select_related("target__current_version", "layer").order_by("-created_at"))
+    links_in = list(obj.links_to.select_related("source__current_version", "layer").order_by("-created_at"))
     views = []
     for view_template in ViewTemplate.objects.filter(applies_to=obj.base_type).order_by("name"):
         rendered = render_view_service(obj, view_template)
         if view_template.renderer == "markdown":
             rendered = {"html": markdown_lib.markdown(rendered["text"])}
         views.append({"template": view_template, "rendered": rendered})
-    return {"object": obj, "views": views, "errors": errors or []}
+    return {"object": obj, "views": views, "links_out": links_out, "links_in": links_in, "errors": errors or []}
 
 
 @require_GET

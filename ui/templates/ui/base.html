@@ -6,8 +6,11 @@
   <script src="{% static 'ui/vendor/htmx.min.js' %}"></script>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; color: #1a1a1a; background: #fafafa; }
-    header { padding: 0.75rem 1rem; border-bottom: 1px solid #ddd; background: #fff; }
+    header { padding: 0.75rem 1rem; border-bottom: 1px solid #ddd; background: #fff; display: flex; align-items: center; justify-content: space-between; }
     header h1 { font-size: 1rem; margin: 0; font-weight: 600; }
+    header nav { display: flex; gap: 1rem; font-size: 0.85rem; }
+    header nav a { color: #555; text-decoration: none; }
+    header nav a:hover { text-decoration: underline; }
     .columns { display: flex; height: calc(100vh - 49px); }
     .column { flex: 1; min-width: 0; padding: 1rem; overflow-y: auto; }
     .column + .column { border-left: 1px solid #ddd; }
@@ -22,7 +25,7 @@
     .object-row form input[type="text"] { flex: 1; }
     .muted { color: #888; font-size: 0.8rem; }
     textarea#prompt { width: 100%; box-sizing: border-box; min-height: 5rem; font-family: inherit; }
-    section h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: #555; }
+    section h2, .column h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.03em; color: #555; margin-top: 1rem; }
     .errors { color: #b00; font-size: 0.85rem; }
     .divergence { color: #a60; font-size: 0.85rem; }
     .view-column h2 { font-size: 0.9rem; margin-top: 0; }
@@ -34,11 +37,19 @@
       font-size: 0.8rem; white-space: pre-wrap; word-break: break-word;
     }
     a.back { font-size: 0.85rem; }
+    table.browse { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    table.browse td, table.browse th { padding: 0.3rem; border-bottom: 1px solid #eee; text-align: left; }
   </style>
   {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <header><h1>Openspaces — harnais de test ({{ space.name }})</h1></header>
+  <header>
+    <h1>Openspaces — harnais de test ({{ space.name }})</h1>
+    <nav>
+      <a href="{% url 'workspace' %}">espace de travail</a>
+      <a href="{% url 'object-browse' %}">objets &amp; liens</a>
+    </nav>
+  </header>
   <div class="columns">
     {% block content %}{% endblock %}
   </div>

@@ -10,6 +10,21 @@ def test_workspace_page_renders(client, demo_context):
     assert response.status_code == 200
 
 
+def test_object_browse_lists_objects_and_links(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"b")})
+    source = Object.objects.get(current_version__attributes__name="a.md")
+    target = Object.objects.get(current_version__attributes__name="b.md")
+    client.post(reverse("link-object", args=[source.id]), {"target": target.id, "nature": "correspondence"})
+
+    response = client.get(reverse("object-browse"))
+
+    assert response.status_code == 200
+    assert b"a.md" in response.content
+    assert b"b.md" in response.content
+    assert b"correspondence" in response.content
+
+
 def test_object_detail_shows_the_three_views(client, demo_context, demo_commande):
     response = client.get(reverse("object-detail", args=[demo_commande.id]))
 
@@ -17,6 +32,20 @@ def test_object_detail_shows_the_three_views(client, demo_context, demo_commande
     assert b"erDiagram" in response.content
     assert b"<h1>commande</h1>" in response.content
     assert b"obligatoire" in response.content  # aper\xc3\xa7u Markdown
+
+
+def test_object_detail_shows_outgoing_and_incoming_links(client, demo_context, demo_commande):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("note.md", b"note")})
+    note = Object.objects.get(current_version__attributes__name="note.md")
+    client.post(reverse("link-object", args=[demo_commande.id]), {"target": note.id, "nature": "documente"})
+
+    commande_response = client.get(reverse("object-detail", args=[demo_commande.id]))
+    note_response = client.get(reverse("object-detail", args=[note.id]))
+
+    assert b"documente" in commande_response.content
+    assert b"note.md" in commande_response.content
+    assert b"documente" in note_response.content
+    assert b"commande" in note_response.content
 
 
 def test_apply_view_edit_updates_fields_and_all_views(client, demo_context, demo_commande):

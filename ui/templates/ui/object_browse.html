@@ -1,0 +1,46 @@
+{% extends "ui/base.html" %}
+
+{% block content %}
+<div class="column">
+  <a class="back" href="{% url 'workspace' %}">← retour</a>
+  <h1>Objets</h1>
+  <table class="browse">
+    <thead>
+      <tr><th>nom</th><th>type</th><th>version</th><th>créé le</th></tr>
+    </thead>
+    <tbody>
+      {% for object in objects %}
+        <tr>
+          <td><a href="{% url 'object-detail' object.id %}">{{ object.current_version.attributes.name|default:"(sans nom)" }}</a></td>
+          <td class="muted">{{ object.base_type.name }}</td>
+          <td class="muted">v{{ object.current_version.number }}</td>
+          <td class="muted">{{ object.created_at|date:"d/m/Y H:i" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4" class="muted">Aucun objet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<div class="column">
+  <h1>Liens</h1>
+  <table class="browse">
+    <thead>
+      <tr><th>source</th><th>nature</th><th>cible</th><th>calque</th><th>statut</th></tr>
+    </thead>
+    <tbody>
+      {% for link in links %}
+        <tr>
+          <td><a href="{% url 'object-detail' link.source_id %}">{{ link.source.current_version.attributes.name|default:link.source_id }}</a></td>
+          <td class="muted">{{ link.nature }}</td>
+          <td><a href="{% url 'object-detail' link.target_id %}">{{ link.target.current_version.attributes.name|default:link.target_id }}</a></td>
+          <td class="muted">{{ link.layer.role|default:"—" }}</td>
+          <td class="muted">{{ link.status }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="5" class="muted">Aucun lien.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

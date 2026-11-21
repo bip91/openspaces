@@ -21,6 +21,16 @@
   {% for divergence in object.open_divergences %}
     <div class="divergence">⚠ {{ divergence.description }}</div>
   {% endfor %}
+  <h2>Liens</h2>
+  {% for link in links_out %}
+    <div class="muted">↳ {{ link.nature }} → <a href="{% url 'object-detail' link.target_id %}">{{ link.target.current_version.attributes.name|default:link.target_id }}</a> ({{ link.status }})</div>
+  {% endfor %}
+  {% for link in links_in %}
+    <div class="muted">↲ {{ link.nature }} ← <a href="{% url 'object-detail' link.source_id %}">{{ link.source.current_version.attributes.name|default:link.source_id }}</a> ({{ link.status }})</div>
+  {% endfor %}
+  {% if not links_out and not links_in %}
+    <p class="muted">Aucun lien.</p>
+  {% endif %}
 </div>
 {% for view in views %}
   <div class="column view-column">
