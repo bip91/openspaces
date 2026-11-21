@@ -4,6 +4,9 @@ from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
+from bus.core import call as bus_call
+from bus.models import CallLog
+from bus.registry import CAPABILITIES, CLIENTS
 from engine.models import Blob, Divergence, Event, Layer, Link, Object, ObjectType, Proposal, ViewTemplate
 from engine.services.blob import store_blob
 from engine.services.create import create_object
@@ -14,7 +17,7 @@ from engine.services.render import apply_view_edit as apply_view_edit_service
 from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
-from ui.demo import demo_context
+from ui.demo import DEMO_TABLE_TYPE_NAME, demo_context
 
 
 def _lookup(queryset, pk_value):
@@ -93,6 +96,49 @@ def object_browse(request):
         .order_by("-created_at")
     )
     return render(request, "ui/object_browse.html", {"space": space, "objects": objects, "links": links})
+
+
+def _bus_log_context():
+    return {
+        "entries": CallLog.objects.order_by("-created_at")[:20],
+        "clients": sorted(CLIENTS),
+        "verbs": sorted(CAPABILITIES) + ["verbe-inexistant"],
+    }
+
+
+@require_GET
+def bus_page(request):
+    space, layer, document_type, user = demo_context()
+    context = _bus_log_context()
+    context["space"] = space
+    return render(request, "ui/bus.html", context)
+
+
+@require_GET
+def bus_log(request):
+    return render(request, "ui/_bus_log.html", _bus_log_context())
+
+
+@require_POST
+def trigger_bus_call(request):
+    space, layer, document_type, user = demo_context()
+    client_id = request.POST.get("client_id", "harnais-web")
+    verb = request.POST.get("verb", "create_object")
+    name = request.POST.get("name", "").strip() or "objet-demo-bus"
+
+    if verb == "create_object":
+        table_type = ObjectType.objects.get(name=DEMO_TABLE_TYPE_NAME, scope=ObjectType.Scope.BASE)
+        payload = {
+            "space_id": str(space.id),
+            "type_id": str(table_type.id),
+            "attributes": {"name": name},
+            "author_username": user.username,
+        }
+    else:
+        payload = {}
+
+    bus_call(verb, client_id, payload)
+    return render(request, "ui/_bus_log.html", _bus_log_context())
 
 
 @require_POST

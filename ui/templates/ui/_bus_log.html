@@ -1,0 +1,14 @@
+{% for entry in entries %}
+  <div class="log-row">
+    <strong>{{ entry.verb }}</strong>
+    <span class="muted">@ {{ entry.client_id }}</span>
+    {% if entry.allowed %}
+      <span class="muted">— autorisé{% if entry.duration_ms %} ({{ entry.duration_ms }} ms){% endif %}</span>
+    {% else %}
+      <span class="divergence">— refusé ({{ entry.error }})</span>
+    {% endif %}
+    <div class="muted">{{ entry.created_at|date:"H:i:s" }}</div>
+  </div>
+{% empty %}
+  <p class="muted">Aucun appel au bus pour l'instant.</p>
+{% endfor %}
