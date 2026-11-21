@@ -47,6 +47,10 @@
       </form>
     {% elif view.template.renderer == "mermaid.erDiagram" %}
       <pre class="mermaid">{{ view.rendered.text }}</pre>
+      <details>
+        <summary class="muted">source (debug)</summary>
+        <pre class="mermaid-source">{{ view.rendered.text }}</pre>
+      </details>
     {% elif view.template.renderer == "markdown" %}
       {{ view.rendered.html|safe }}
     {% endif %}
