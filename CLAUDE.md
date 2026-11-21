@@ -108,13 +108,20 @@ Orientation retenue, à approfondir : cohérence au niveau de l'espace, avec pos
 
 ## Commandes
 
-À compléter au fil du lot 1 :
-
 ```
 # installation
-# lancement des tests : pytest
-# serveur de dev
-# serveur MCP
+python3.13 -m venv .venv
+.venv/bin/pip install -e ".[dev]"
+docker compose up -d                     # PostgreSQL 16 + pgvector
+.venv/bin/python manage.py migrate
+
+# lancement des tests
+.venv/bin/pytest
+
+# serveur de dev : pas d'interface web avant le lot 2
+
+# serveur MCP (stdio)
+.venv/bin/python -m mcp_server
 ```
 
 ## Méthode de travail
