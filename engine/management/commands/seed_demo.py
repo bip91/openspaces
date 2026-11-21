@@ -1,9 +1,11 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from engine.models import Layer, Object, ObjectType, Space, ViewTemplate
+from engine.models import Aspect, Layer, Object, ObjectType, Space, ViewTemplate
 from engine.services.create import create_object
+from engine.services.link import link_objects
 from ui.demo import (
+    DEMO_EXIGENCE_OBJECT_NAME,
     DEMO_LAYER_ROLE,
     DEMO_LAYER_ROLE_FONCTIONNEL,
     DEMO_SECOND_TYPE_NAME,
@@ -42,10 +44,22 @@ class Command(BaseCommand):
                 }
             },
         )
-        exigence_type, exigence_type_created = ObjectType.objects.get_or_create(
+        # update_or_create (pas get_or_create) : le schéma d'Exigence a évolué (lot 3
+        # ajoute field/rule) et doit se mettre à jour en rejouant la commande.
+        exigence_type, exigence_type_created = ObjectType.objects.update_or_create(
             name=DEMO_SECOND_TYPE_NAME,
             scope=ObjectType.Scope.BASE,
-            defaults={"schema": {"type": "object", "properties": {"name": {"type": "string"}}}},
+            defaults={
+                "schema": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "field": {"type": "string"},
+                        "rule": {"type": "string", "enum": ["obligatoire", "facultatif"]},
+                    },
+                }
+            },
         )
         table_type, table_type_created = ObjectType.objects.get_or_create(
             name=DEMO_TABLE_TYPE_NAME,
@@ -105,6 +119,44 @@ class Command(BaseCommand):
             )
             commande_created = True
 
+        commande = Object.objects.get(
+            space=space, base_type=table_type, current_version__attributes__name=DEMO_TABLE_OBJECT_NAME
+        )
+
+        aspects = [
+            (
+                "notify-field-change",
+                {"type": "Table", "event": "updated", "linked_from": "Exigence"},
+                {"kind": "notify", "target_layer": DEMO_LAYER_ROLE_FONCTIONNEL},
+            ),
+            (
+                "exigence-contrainte-divergence",
+                {"type": ["Table", "Exigence"]},
+                {"kind": "check_constraint"},
+            ),
+        ]
+        aspects_created = False
+        for aspect_name, pointcut, action in aspects:
+            _, created_flag = Aspect.objects.get_or_create(
+                name=aspect_name,
+                layer=layer_fonctionnel,
+                defaults={"pointcut": pointcut, "action": action, "active": True},
+            )
+            aspects_created = aspects_created or created_flag
+
+        exigence_created = False
+        if not Object.objects.filter(
+            space=space, base_type=exigence_type, current_version__attributes__name=DEMO_EXIGENCE_OBJECT_NAME
+        ).exists():
+            exigence = create_object(
+                space,
+                exigence_type,
+                {"name": DEMO_EXIGENCE_OBJECT_NAME, "field": "delai", "rule": "obligatoire"},
+                author=user,
+            )
+            link_objects("correspondence", exigence, commande, layer=layer_fonctionnel, author=user)
+            exigence_created = True
+
         created = [
             name
             for name, was_created in (
@@ -117,6 +169,8 @@ class Command(BaseCommand):
                 ("type Table", table_type_created),
                 ("gabarits de vue", view_templates_created),
                 ("table commande", commande_created),
+                ("aspects", aspects_created),
+                ("exigence délai obligatoire", exigence_created),
             )
             if was_created
         ]

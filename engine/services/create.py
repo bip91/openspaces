@@ -2,6 +2,7 @@ from django.db import transaction
 
 from engine.models import Event, Object, Provenance, Version
 from engine.services._actor import require_actor
+from engine.services.aspects import run_aspects
 from engine.services.hashing import sha256_attributes
 from engine.services.schema import validate_attributes
 
@@ -32,5 +33,6 @@ def create_object(space, object_type, attributes, *, author=None, agent_name=Non
     if provenance:
         Provenance.objects.create(version=version, **provenance)
 
-    Event.objects.create(object=obj, version=version, nature="created", author=author, agent_name=agent_name)
+    event = Event.objects.create(object=obj, version=version, nature="created", author=author, agent_name=agent_name)
+    run_aspects(obj, event)
     return obj

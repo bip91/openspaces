@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth.models import User
 
-from engine.models import Layer, ObjectType, Space, ViewTemplate
+from engine.models import Aspect, Layer, ObjectType, Space, ViewTemplate
 from engine.services.create import create_object
 
 
@@ -71,6 +71,44 @@ def view_template_markdown(table_type):
         kind=ViewTemplate.Kind.NARRATIVE,
         renderer="markdown",
         editable=False,
+    )
+
+
+@pytest.fixture
+def exigence_type(db):
+    return ObjectType.objects.create(
+        name="Exigence",
+        schema={
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "name": {"type": "string"},
+                "field": {"type": "string"},
+                "rule": {"type": "string", "enum": ["obligatoire", "facultatif"]},
+            },
+        },
+    )
+
+
+@pytest.fixture
+def notify_aspect(layer_fonctionnel):
+    return Aspect.objects.create(
+        name="notify-field-change",
+        layer=layer_fonctionnel,
+        pointcut={"type": "Table", "event": "updated", "linked_from": "Exigence"},
+        action={"kind": "notify", "target_layer": "fonctionnel"},
+        active=True,
+    )
+
+
+@pytest.fixture
+def check_constraint_aspect(layer_fonctionnel):
+    return Aspect.objects.create(
+        name="exigence-contrainte-divergence",
+        layer=layer_fonctionnel,
+        pointcut={"type": ["Table", "Exigence"]},
+        action={"kind": "check_constraint"},
+        active=True,
     )
 
 

@@ -18,6 +18,9 @@
   {% if errors %}
     <div class="errors">{% for error in errors %}<div>{{ error }}</div>{% endfor %}</div>
   {% endif %}
+  {% for divergence in object.open_divergences %}
+    <div class="divergence">⚠ {{ divergence.description }}</div>
+  {% endfor %}
 </div>
 {% for view in views %}
   <div class="column view-column">

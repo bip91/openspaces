@@ -1,4 +1,12 @@
 <section>
+  <h2>Divergences ouvertes</h2>
+  {% for divergence in divergences %}
+    <div class="log-row divergence">⚠ {{ divergence.description }}</div>
+  {% empty %}
+    <p class="muted">Aucune divergence ouverte.</p>
+  {% endfor %}
+</section>
+<section>
   <h2>Propositions</h2>
   {% for proposal in proposals %}
     <div class="log-row">

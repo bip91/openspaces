@@ -2,6 +2,7 @@ from django.db import transaction
 
 from engine.models import Event, Link
 from engine.services._actor import require_actor
+from engine.services.aspects import run_aspects
 
 
 @transaction.atomic
@@ -17,7 +18,8 @@ def link_objects(nature, source, target, *, layer=None, author=None, agent_name=
         version=source.current_version,
         status=Link.Status.ACTIVE,
     )
-    Event.objects.create(
+    event = Event.objects.create(
         object=source, version=source.current_version, nature="linked", author=author, agent_name=agent_name
     )
+    run_aspects(source, event)
     return link

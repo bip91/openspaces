@@ -16,6 +16,7 @@ DEMO_TYPE_NAME = "Document"
 DEMO_SECOND_TYPE_NAME = "Exigence"
 DEMO_TABLE_TYPE_NAME = "Table"
 DEMO_TABLE_OBJECT_NAME = "commande"
+DEMO_EXIGENCE_OBJECT_NAME = "délai obligatoire"
 
 
 def demo_context():

@@ -52,6 +52,9 @@
     {% for typing in object.typings.all %}
       <div class="muted">▸ {{ typing.layer.role }} : {{ typing.type.name }}</div>
     {% endfor %}
+    {% for divergence in object.open_divergences %}
+      <div class="divergence">⚠ {{ divergence.description }}</div>
+    {% endfor %}
   </div>
 {% empty %}
   <p class="muted">Aucun objet pour l'instant — dépose un fichier ci-dessus.</p>

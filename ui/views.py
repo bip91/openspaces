@@ -4,7 +4,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from engine.models import Blob, Event, Layer, Object, ObjectType, Proposal, ViewTemplate
+from engine.models import Blob, Divergence, Event, Layer, Object, ObjectType, Proposal, ViewTemplate
 from engine.services.blob import store_blob
 from engine.services.create import create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
@@ -36,12 +36,14 @@ def _object_list_context(space):
             "links_from__target__current_version",
             "typings__layer",
             "typings__type",
+            "divergences",
         )
         .order_by("-created_at")[:50]
     )
     for obj in objects:
         provenances = list(obj.current_version.provenances.all())
         obj.blob = provenances[0].source_blob if provenances else None
+        obj.open_divergences = [d for d in obj.divergences.all() if d.status == Divergence.Status.OPEN]
     layers = Layer.objects.filter(space=space).order_by("role")
     types = ObjectType.objects.filter(scope=ObjectType.Scope.BASE).order_by("name")
     return {"objects": objects, "layers": layers, "types": types}
@@ -54,7 +56,12 @@ def _log_context(space):
         .order_by("-created_at")[:20]
     )
     proposals = Proposal.objects.order_by("-created_at")[:20]
-    return {"events": events, "proposals": proposals}
+    divergences = (
+        Divergence.objects.filter(space=space, status=Divergence.Status.OPEN)
+        .prefetch_related("related_objects__current_version")
+        .order_by("-created_at")
+    )
+    return {"events": events, "proposals": proposals, "divergences": divergences}
 
 
 @require_GET
@@ -236,6 +243,7 @@ def submit_prompt(request):
 
 
 def _object_detail_context(obj, errors=None):
+    obj.open_divergences = list(obj.divergences.filter(status=Divergence.Status.OPEN))
     views = []
     for view_template in ViewTemplate.objects.filter(applies_to=obj.base_type).order_by("name"):
         rendered = render_view_service(obj, view_template)

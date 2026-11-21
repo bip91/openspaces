@@ -253,7 +253,11 @@ class Divergence(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="divergences")
-    objects = models.ManyToManyField(Object, related_name="divergences")
+    # Nommé ``related_objects`` et non ``objects`` (le mot de la spec) : ce nom de
+    # champ entre en collision avec le manager par défaut de Django et le rend
+    # totalement inaccessible (``AttributeError: Manager isn't accessible via
+    # Divergence instances``).
+    related_objects = models.ManyToManyField(Object, related_name="divergences")
     layers = models.ManyToManyField(Layer, related_name="divergences")
     description = models.TextField()
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.OPEN)
