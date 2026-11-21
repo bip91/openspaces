@@ -1,0 +1,23 @@
+{% if errors %}
+  <div class="errors">
+    {% for error in errors %}<div>{{ error }}</div>{% endfor %}
+  </div>
+{% endif %}
+{% for object in objects %}
+  <div class="object-row">
+    <strong>{{ object.current_version.attributes.name|default:"(sans nom)" }}</strong>
+    <span class="muted">— {{ object.base_type.name }}, v{{ object.current_version.number }}</span>
+    {% if object.blob %}<a href="{% url 'blob-content' object.blob.sha256 %}" target="_blank">voir</a>{% endif %}
+    <details id="edit-{{ object.id }}" hx-preserve="true">
+      <summary>éditer</summary>
+      <form hx-post="{% url 'update-object' object.id %}" hx-target="#object-list" hx-swap="innerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="expected_version" value="{{ object.current_version.number }}">
+        <input type="text" name="name" value="{{ object.current_version.attributes.name }}">
+        <button type="submit">enregistrer</button>
+      </form>
+    </details>
+  </div>
+{% empty %}
+  <p class="muted">Aucun objet pour l'instant — dépose un fichier ci-dessus.</p>
+{% endfor %}

@@ -1,4 +1,4 @@
-"""Réglages Django pour la maquette (lot 1 : moteur)."""
+"""Réglages Django pour la maquette (lot 1 : moteur ; harnais de test : ui)."""
 
 import os
 from pathlib import Path
@@ -12,12 +12,36 @@ ALLOWED_HOSTS = ["*"] if DEBUG else []
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.staticfiles",
     "engine",
+    "ui",
 ]
 
-MIDDLEWARE = []
+MIDDLEWARE = [
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+]
 
 ROOT_URLCONF = "config.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+            ],
+        },
+    }
+]
+
+STATIC_URL = "static/"
+
+BLOB_STORAGE_ROOT = os.environ.get("BLOB_STORAGE_ROOT", str(BASE_DIR / "var" / "blobs"))
 
 DATABASES = {
     "default": {

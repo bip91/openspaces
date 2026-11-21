@@ -118,7 +118,9 @@ docker compose up -d                     # PostgreSQL 16 + pgvector
 # lancement des tests
 .venv/bin/pytest
 
-# serveur de dev : pas d'interface web avant le lot 2
+# serveur de dev (harnais de test ui/, pas l'interface du lot 2)
+.venv/bin/python manage.py seed_demo      # espace/calque/type de démo, une fois
+.venv/bin/python manage.py runserver
 
 # serveur MCP (stdio)
 .venv/bin/python -m mcp_server

@@ -1,0 +1,46 @@
+{% extends "ui/base.html" %}
+
+{% block content %}
+<div class="column">
+  <form id="import-form" hx-post="{% url 'import-object' %}" hx-target="#object-list" hx-swap="innerHTML" hx-encoding="multipart/form-data">
+    {% csrf_token %}
+    <div id="dropzone">
+      Dépose un fichier ici (ou clique pour en choisir un)
+      <input type="file" name="files" id="file-input" multiple style="display:none">
+    </div>
+  </form>
+  <div id="object-list" hx-get="{% url 'object-list' %}" hx-trigger="load, every 2s" hx-swap="innerHTML">
+    {% include "ui/_object_list.html" %}
+  </div>
+</div>
+<div class="column">
+  <form hx-post="{% url 'submit-prompt' %}" hx-target="#log" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+    {% csrf_token %}
+    <textarea id="prompt" name="text" placeholder="Coller un texte (ex. un mail fonctionnel) — traité au lot 4"></textarea>
+    <button type="submit">Envoyer</button>
+  </form>
+  <div id="log" hx-get="{% url 'event-log' %}" hx-trigger="load, every 2s" hx-swap="innerHTML">
+    {% include "ui/_event_log.html" %}
+  </div>
+</div>
+
+<script>
+  const zone = document.getElementById("dropzone");
+  const input = document.getElementById("file-input");
+  const form = document.getElementById("import-form");
+
+  zone.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    zone.classList.add("dragging");
+  });
+  zone.addEventListener("dragleave", () => zone.classList.remove("dragging"));
+  zone.addEventListener("drop", (event) => {
+    event.preventDefault();
+    zone.classList.remove("dragging");
+    input.files = event.dataTransfer.files;
+    form.requestSubmit();
+  });
+  zone.addEventListener("click", () => input.click());
+  input.addEventListener("change", () => form.requestSubmit());
+</script>
+{% endblock %}

@@ -1,3 +1,5 @@
-"""Pas d'interface web au lot 1 ; l'API passe par le serveur MCP (mcp_server/)."""
+from django.urls import include, path
 
-urlpatterns = []
+urlpatterns = [
+    path("", include("ui.urls")),
+]

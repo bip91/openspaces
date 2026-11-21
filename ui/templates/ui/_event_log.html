@@ -1,0 +1,23 @@
+<section>
+  <h2>Propositions</h2>
+  {% for proposal in proposals %}
+    <div class="log-row">
+      <strong>{{ proposal.operation }}</strong>
+      <span class="muted">— {{ proposal.decision }}</span>
+      <div class="muted">{{ proposal.input.text|default:proposal.input|truncatechars:140 }}</div>
+    </div>
+  {% empty %}
+    <p class="muted">Aucune proposition.</p>
+  {% endfor %}
+</section>
+<section>
+  <h2>Événements</h2>
+  {% for event in events %}
+    <div class="log-row">
+      <strong>{{ event.nature }}</strong>
+      <span class="muted">— {{ event.object.base_type.name }}, par {{ event.author.username|default:event.agent_name }}</span>
+    </div>
+  {% empty %}
+    <p class="muted">Aucun événement.</p>
+  {% endfor %}
+</section>
