@@ -1,12 +1,15 @@
 import pytest
 from django.contrib.auth.models import User
 
-from engine.models import Layer, ObjectType, Space
+from engine.models import Layer, ObjectType, Space, ViewTemplate
+from engine.services.create import create_object
 from ui.demo import (
     DEMO_LAYER_ROLE,
     DEMO_LAYER_ROLE_FONCTIONNEL,
     DEMO_SECOND_TYPE_NAME,
     DEMO_SPACE_NAME,
+    DEMO_TABLE_OBJECT_NAME,
+    DEMO_TABLE_TYPE_NAME,
     DEMO_TYPE_NAME,
     DEMO_USERNAME,
 )
@@ -55,6 +58,65 @@ def demo_type(db):
                 "size": {"type": "integer"},
             },
         },
+    )
+
+
+@pytest.fixture
+def demo_table_type(db):
+    return ObjectType.objects.create(
+        name=DEMO_TABLE_TYPE_NAME,
+        scope=ObjectType.Scope.BASE,
+        schema={
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "name": {"type": "string"},
+                "fields": {"type": "array", "items": {"type": "object"}},
+            },
+        },
+    )
+
+
+@pytest.fixture
+def demo_view_templates(demo_table_type):
+    return [
+        ViewTemplate.objects.create(
+            name="table-grid",
+            applies_to=demo_table_type,
+            kind=ViewTemplate.Kind.STRUCTURED,
+            renderer="table",
+            editable=True,
+        ),
+        ViewTemplate.objects.create(
+            name="table-mermaid",
+            applies_to=demo_table_type,
+            kind=ViewTemplate.Kind.STRUCTURED,
+            renderer="mermaid.erDiagram",
+            editable=True,
+        ),
+        ViewTemplate.objects.create(
+            name="table-spec",
+            applies_to=demo_table_type,
+            kind=ViewTemplate.Kind.NARRATIVE,
+            renderer="markdown",
+            editable=False,
+        ),
+    ]
+
+
+@pytest.fixture
+def demo_commande(demo_space, demo_table_type, demo_user, demo_view_templates):
+    return create_object(
+        demo_space,
+        demo_table_type,
+        {
+            "name": DEMO_TABLE_OBJECT_NAME,
+            "fields": [
+                {"name": "id", "type": "uuid", "nullable": False},
+                {"name": "delai", "type": "integer", "nullable": False},
+            ],
+        },
+        author=demo_user,
     )
 
 

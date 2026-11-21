@@ -1,0 +1,55 @@
+{% extends "ui/base.html" %}
+{% load static %}
+
+{% block extra_head %}
+  <script src="{% static 'ui/vendor/mermaid.min.js' %}"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.mermaid) { mermaid.initialize({ startOnLoad: true }); }
+    });
+  </script>
+{% endblock %}
+
+{% block content %}
+<div class="column">
+  <a class="back" href="{% url 'workspace' %}">← retour</a>
+  <h1>{{ object.current_version.attributes.name }}</h1>
+  <p class="muted">{{ object.base_type.name }}, v{{ object.current_version.number }}</p>
+  {% if errors %}
+    <div class="errors">{% for error in errors %}<div>{{ error }}</div>{% endfor %}</div>
+  {% endif %}
+</div>
+{% for view in views %}
+  <div class="column view-column">
+    <h2>{{ view.template.name }}</h2>
+    {% if view.template.renderer == "table" %}
+      <form method="post" action="{% url 'apply-view-edit' object.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="expected_version" value="{{ object.current_version.number }}">
+        <table>
+          <thead><tr><th>nom</th><th>type</th><th>nullable</th></tr></thead>
+          <tbody>
+            {% for row in view.rendered.rows %}
+              <tr>
+                <td><input type="text" name="field_name" value="{{ row.name }}"></td>
+                <td><input type="text" name="field_type" value="{{ row.type }}"></td>
+                <td>
+                  <select name="field_nullable">
+                    <option value="true" {% if row.nullable %}selected{% endif %}>oui</option>
+                    <option value="false" {% if not row.nullable %}selected{% endif %}>non</option>
+                  </select>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <button type="submit">enregistrer</button>
+      </form>
+    {% elif view.template.renderer == "mermaid.erDiagram" %}
+      <pre class="mermaid">{{ view.rendered.text }}</pre>
+    {% elif view.template.renderer == "markdown" %}
+      {{ view.rendered.html|safe }}
+    {% endif %}
+  </div>
+{% endfor %}
+{% endblock %}

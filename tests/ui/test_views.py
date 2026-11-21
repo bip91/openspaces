@@ -10,6 +10,60 @@ def test_workspace_page_renders(client, demo_context):
     assert response.status_code == 200
 
 
+def test_object_detail_shows_the_three_views(client, demo_context, demo_commande):
+    response = client.get(reverse("object-detail", args=[demo_commande.id]))
+
+    assert response.status_code == 200
+    assert b"erDiagram" in response.content
+    assert b"<h1>commande</h1>" in response.content
+    assert b"obligatoire" in response.content  # aper\xc3\xa7u Markdown
+
+
+def test_apply_view_edit_updates_fields_and_all_views(client, demo_context, demo_commande):
+    response = client.post(
+        reverse("apply-view-edit", args=[demo_commande.id]),
+        {
+            "expected_version": 1,
+            "field_name": ["id", "delai"],
+            "field_type": ["uuid", "integer"],
+            "field_nullable": ["false", "true"],
+        },
+    )
+
+    assert response.status_code == 200
+    demo_commande.refresh_from_db()
+    assert demo_commande.current_version.number == 2
+    assert demo_commande.current_version.attributes["fields"][1]["nullable"] is True
+    assert b"facultatif" in response.content
+
+
+def test_apply_view_edit_reports_conflict(client, demo_context, demo_commande):
+    client.post(
+        reverse("apply-view-edit", args=[demo_commande.id]),
+        {
+            "expected_version": 1,
+            "field_name": ["id", "delai"],
+            "field_type": ["uuid", "integer"],
+            "field_nullable": ["false", "false"],
+        },
+    )
+
+    response = client.post(
+        reverse("apply-view-edit", args=[demo_commande.id]),
+        {
+            "expected_version": 1,
+            "field_name": ["id", "delai"],
+            "field_type": ["uuid", "integer"],
+            "field_nullable": ["false", "true"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert b"conflit" in response.content
+    demo_commande.refresh_from_db()
+    assert demo_commande.current_version.number == 2
+
+
 def test_import_object_creates_object_and_lists_it(client, demo_context):
     upload = SimpleUploadedFile("spec.md", b"# spec", content_type="text/markdown")
 

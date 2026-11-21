@@ -63,6 +63,24 @@ class ObjectType(models.Model):
         return self.name
 
 
+class ViewTemplate(models.Model):
+    """Gabarit de vue (lot 2) : une vue et son rendu, méta-objet comme ObjectType."""
+
+    class Kind(models.TextChoices):
+        STRUCTURED = "structured", "structured"
+        NARRATIVE = "narrative", "narrative"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    applies_to = models.ForeignKey(ObjectType, on_delete=models.CASCADE, related_name="view_templates")
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    renderer = models.CharField(max_length=100)
+    editable = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.name
+
+
 class Object(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     space = models.ForeignKey(Space, on_delete=models.CASCADE, related_name="engine_objects")

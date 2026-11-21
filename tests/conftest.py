@@ -1,7 +1,8 @@
 import pytest
 from django.contrib.auth.models import User
 
-from engine.models import Layer, ObjectType, Space
+from engine.models import Layer, ObjectType, Space, ViewTemplate
+from engine.services.create import create_object
 
 
 @pytest.fixture
@@ -41,4 +42,49 @@ def table_type(db):
                 "fields": {"type": "array", "items": {"type": "object"}},
             },
         },
+    )
+
+
+@pytest.fixture
+def view_template_table(table_type):
+    return ViewTemplate.objects.create(
+        name="table-grid", applies_to=table_type, kind=ViewTemplate.Kind.STRUCTURED, renderer="table", editable=True
+    )
+
+
+@pytest.fixture
+def view_template_mermaid(table_type):
+    return ViewTemplate.objects.create(
+        name="table-mermaid",
+        applies_to=table_type,
+        kind=ViewTemplate.Kind.STRUCTURED,
+        renderer="mermaid.erDiagram",
+        editable=True,
+    )
+
+
+@pytest.fixture
+def view_template_markdown(table_type):
+    return ViewTemplate.objects.create(
+        name="table-spec",
+        applies_to=table_type,
+        kind=ViewTemplate.Kind.NARRATIVE,
+        renderer="markdown",
+        editable=False,
+    )
+
+
+@pytest.fixture
+def commande(space, table_type, user):
+    return create_object(
+        space,
+        table_type,
+        {
+            "name": "commande",
+            "fields": [
+                {"name": "id", "type": "uuid", "nullable": False},
+                {"name": "delai", "type": "integer", "nullable": False},
+            ],
+        },
+        author=user,
     )

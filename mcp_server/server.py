@@ -1,4 +1,5 @@
-"""Contrat MCP du moteur (lot 1) : create_object, update_object, link_objects, set_typing.
+"""Contrat MCP du moteur : create_object, update_object, link_objects, set_typing (lot 1),
+render_view, apply_view_edit (lot 2).
 
 Chaque outil est une fine couche de (dé)sérialisation au-dessus de engine/services ;
 aucune règle métier n'est dupliquée ici.
@@ -8,10 +9,12 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from mcp.server.mcpserver import MCPServer
 
-from engine.models import Layer, Object, ObjectType, Space
+from engine.models import Layer, Object, ObjectType, Space, ViewTemplate
 from engine.services.create import create_object as engine_create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
 from engine.services.link import link_objects as engine_link_objects
+from engine.services.render import apply_view_edit as engine_apply_view_edit
+from engine.services.render import render_view as engine_render_view
 from engine.services.typing import set_typing as engine_set_typing
 from engine.services.update import update_object as engine_update_object
 from mcp_server.serializers import serialize_link, serialize_object, serialize_typing, serialize_version
@@ -143,3 +146,47 @@ def set_typing(
         return {"error": "actor", "message": str(exc)}
 
     return serialize_typing(typing)
+
+
+@server.tool()
+def render_view(object_id: str, view_template_id: str) -> dict:
+    """Rend un objet selon un gabarit de vue (lecture, aucune écriture)."""
+    try:
+        obj = Object.objects.get(pk=object_id)
+        view_template = ViewTemplate.objects.get(pk=view_template_id)
+    except ObjectDoesNotExist as exc:
+        return _not_found(str(exc))
+
+    return engine_render_view(obj, view_template)
+
+
+@server.tool()
+def apply_view_edit(
+    object_id: str,
+    expected_version: int,
+    changes: dict,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Applique une modification structurée (issue d'une vue) si la version attendue tient."""
+    try:
+        author, agent_name = _resolve_actor(author_username, agent_name)
+    except ObjectDoesNotExist as exc:
+        return _not_found(str(exc))
+    except ValueError as exc:
+        return {"error": "actor", "message": str(exc)}
+
+    try:
+        version = engine_apply_view_edit(
+            object_id, expected_version, changes, author=author, agent_name=agent_name
+        )
+    except Object.DoesNotExist as exc:
+        return _not_found(str(exc))
+    except VersionConflict as exc:
+        return {"error": "conflict", "current_version": serialize_version(exc.current_version)}
+    except SchemaValidationError as exc:
+        return {"error": "schema", "errors": exc.errors}
+    except ValueError as exc:
+        return {"error": "actor", "message": str(exc)}
+
+    return serialize_version(version)

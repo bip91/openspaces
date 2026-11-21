@@ -9,6 +9,7 @@ dependencies = [
     "jsonschema>=4.23",
     "pgvector>=0.3",
     "mcp>=2.0",
+    "markdown>=3.7",
 ]
 
 [project.optional-dependencies]

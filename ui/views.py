@@ -1,14 +1,17 @@
+import markdown as markdown_lib
 from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 
-from engine.models import Blob, Event, Layer, Object, ObjectType, Proposal
+from engine.models import Blob, Event, Layer, Object, ObjectType, Proposal, ViewTemplate
 from engine.services.blob import store_blob
 from engine.services.create import create_object
 from engine.services.errors import SchemaValidationError, VersionConflict
 from engine.services.link import link_objects as link_objects_service
 from engine.services.propose import record_proposal
+from engine.services.render import apply_view_edit as apply_view_edit_service
+from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
 from ui.demo import demo_context
@@ -230,3 +233,56 @@ def submit_prompt(request):
     if text:
         record_proposal("manual-prompt", {"text": text})
     return render(request, "ui/_event_log.html", _log_context(space))
+
+
+def _object_detail_context(obj, errors=None):
+    views = []
+    for view_template in ViewTemplate.objects.filter(applies_to=obj.base_type).order_by("name"):
+        rendered = render_view_service(obj, view_template)
+        if view_template.renderer == "markdown":
+            rendered = {"html": markdown_lib.markdown(rendered["text"])}
+        views.append({"template": view_template, "rendered": rendered})
+    return {"object": obj, "views": views, "errors": errors or []}
+
+
+@require_GET
+def object_detail(request, object_id):
+    space, layer, document_type, user = demo_context()
+    try:
+        obj = Object.objects.select_related("base_type", "current_version").get(pk=object_id, space=space)
+    except Object.DoesNotExist:
+        raise Http404
+    context = _object_detail_context(obj)
+    context["space"] = space
+    return render(request, "ui/object_detail.html", context)
+
+
+@require_POST
+def apply_view_edit_view(request, object_id):
+    space, layer, document_type, user = demo_context()
+    try:
+        obj = Object.objects.select_related("base_type", "current_version").get(pk=object_id, space=space)
+    except Object.DoesNotExist:
+        raise Http404
+
+    expected_version = int(request.POST.get("expected_version", "0"))
+    names = request.POST.getlist("field_name")
+    types = request.POST.getlist("field_type")
+    nullables = request.POST.getlist("field_nullable")
+    fields = [
+        {"name": name, "type": type_, "nullable": nullable == "true"}
+        for name, type_, nullable in zip(names, types, nullables)
+    ]
+
+    errors = []
+    try:
+        apply_view_edit_service(object_id, expected_version, {"fields": fields}, author=user)
+    except VersionConflict as exc:
+        errors.append(f"conflit : version courante = {exc.current_version.number}, recharge et réessaie.")
+    except SchemaValidationError as exc:
+        errors.append("; ".join(exc.errors))
+
+    obj.refresh_from_db()
+    context = _object_detail_context(obj, errors)
+    context["space"] = space
+    return render(request, "ui/object_detail.html", context)

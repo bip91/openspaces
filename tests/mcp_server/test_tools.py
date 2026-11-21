@@ -1,5 +1,5 @@
 from engine.models import Object
-from mcp_server.server import create_object, link_objects, set_typing, update_object
+from mcp_server.server import apply_view_edit, create_object, link_objects, render_view, set_typing, update_object
 
 
 def test_create_object_tool_returns_serialized_object(space, table_type, user):
@@ -42,3 +42,19 @@ def test_set_typing_tool(space, table_type, layer_fonctionnel, user):
 
     assert result["object_id"] == created["id"]
     assert result["layer_id"] == str(layer_fonctionnel.id)
+
+
+def test_render_view_tool(commande, view_template_mermaid):
+    result = render_view(str(commande.id), str(view_template_mermaid.id))
+
+    assert "erDiagram" in result["text"]
+    assert "delai" in result["text"]
+
+
+def test_apply_view_edit_tool_reports_conflict(commande, user):
+    apply_view_edit(str(commande.id), 1, {"name": "v2"}, author_username=user.username)
+
+    result = apply_view_edit(str(commande.id), 1, {"name": "v3-perdue"}, author_username=user.username)
+
+    assert result["error"] == "conflict"
+    assert result["current_version"]["number"] == 2

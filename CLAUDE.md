@@ -106,6 +106,8 @@ Hors : shell de bureau, synchronisation et partage d'espaces, univers global, ad
 
 Orientation retenue, à approfondir : cohérence au niveau de l'espace, avec possibilité de restreindre l'accès au niveau d'un objet ou d'un attribut lors du partage. Le contenu des sources (mails, documents) est non fiable pour les agents. D'ici là : ne rien concevoir qui empêche un filtrage par objet ou par attribut (par exemple, ne pas dupliquer les attributs hors de `Version`).
 
+Vérifié au lot 2 : `render_view` lit toujours `Version.attributes` directement (engine/services/render.py), aucune copie des attributs ailleurs (pas dans `ViewTemplate`, pas dans l'interface). Un futur filtrage par objet ou par attribut lors d'un partage (calques, lot 3) reste donc possible sans remodeler les vues.
+
 ## Commandes
 
 ```

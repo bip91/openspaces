@@ -14,6 +14,8 @@ DEMO_LAYER_ROLE = "développeur"
 DEMO_LAYER_ROLE_FONCTIONNEL = "fonctionnel"
 DEMO_TYPE_NAME = "Document"
 DEMO_SECOND_TYPE_NAME = "Exigence"
+DEMO_TABLE_TYPE_NAME = "Table"
+DEMO_TABLE_OBJECT_NAME = "commande"
 
 
 def demo_context():

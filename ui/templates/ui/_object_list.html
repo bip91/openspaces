@@ -8,6 +8,7 @@
     <strong>{{ object.current_version.attributes.name|default:"(sans nom)" }}</strong>
     <span class="muted">— {{ object.base_type.name }}, v{{ object.current_version.number }}</span>
     {% if object.blob %}<a href="{% url 'blob-content' object.blob.sha256 %}" target="_blank">voir</a>{% endif %}
+    {% if object.base_type.name == "Table" %}<a href="{% url 'object-detail' object.id %}">voir les vues</a>{% endif %}
     <details id="edit-{{ object.id }}" hx-preserve="true">
       <summary>éditer</summary>
       <form hx-post="{% url 'update-object' object.id %}" hx-target="#object-list" hx-swap="innerHTML">
