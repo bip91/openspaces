@@ -35,15 +35,13 @@ def _not_found(message):
     return {"error": "not_found", "message": message}
 
 
-@server.tool()
-def create_object(
+def _create_object(
     space_id: str,
     type_id: str,
     attributes: dict,
     author_username: str | None = None,
     agent_name: str | None = None,
 ) -> dict:
-    """Crée un objet et sa version 1 dans l'espace donné."""
     try:
         space = Space.objects.get(pk=space_id)
         object_type = ObjectType.objects.get(pk=type_id)
@@ -64,14 +62,24 @@ def create_object(
 
 
 @server.tool()
-def update_object(
+def create_object(
+    space_id: str,
+    type_id: str,
+    attributes: dict,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Crée un objet et sa version 1 dans l'espace donné."""
+    return _create_object(space_id, type_id, attributes, author_username, agent_name)
+
+
+def _update_object(
     object_id: str,
     expected_version: int,
     attributes: dict,
     author_username: str | None = None,
     agent_name: str | None = None,
 ) -> dict:
-    """Met à jour un objet si ``expected_version`` est bien la version courante."""
     try:
         author, agent_name = _resolve_actor(author_username, agent_name)
     except ObjectDoesNotExist as exc:
@@ -94,7 +102,18 @@ def update_object(
 
 
 @server.tool()
-def link_objects(
+def update_object(
+    object_id: str,
+    expected_version: int,
+    attributes: dict,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Met à jour un objet si ``expected_version`` est bien la version courante."""
+    return _update_object(object_id, expected_version, attributes, author_username, agent_name)
+
+
+def _link_objects(
     nature: str,
     source_id: str,
     target_id: str,
@@ -102,7 +121,6 @@ def link_objects(
     author_username: str | None = None,
     agent_name: str | None = None,
 ) -> dict:
-    """Crée un lien typé, actif, entre deux objets."""
     try:
         source = Object.objects.get(pk=source_id)
         target = Object.objects.get(pk=target_id)
@@ -122,14 +140,25 @@ def link_objects(
 
 
 @server.tool()
-def set_typing(
+def link_objects(
+    nature: str,
+    source_id: str,
+    target_id: str,
+    layer_id: str | None = None,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Crée un lien typé, actif, entre deux objets."""
+    return _link_objects(nature, source_id, target_id, layer_id, author_username, agent_name)
+
+
+def _set_typing(
     object_id: str,
     layer_id: str,
     type_id: str,
     author_username: str | None = None,
     agent_name: str | None = None,
 ) -> dict:
-    """Ajoute un typage de l'objet pour le calque donné."""
     try:
         obj = Object.objects.get(pk=object_id)
         layer = Layer.objects.get(pk=layer_id)
@@ -149,8 +178,18 @@ def set_typing(
 
 
 @server.tool()
-def render_view(object_id: str, view_template_id: str) -> dict:
-    """Rend un objet selon un gabarit de vue (lecture, aucune écriture)."""
+def set_typing(
+    object_id: str,
+    layer_id: str,
+    type_id: str,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Ajoute un typage de l'objet pour le calque donné."""
+    return _set_typing(object_id, layer_id, type_id, author_username, agent_name)
+
+
+def _render_view(object_id: str, view_template_id: str) -> dict:
     try:
         obj = Object.objects.get(pk=object_id)
         view_template = ViewTemplate.objects.get(pk=view_template_id)
@@ -161,14 +200,18 @@ def render_view(object_id: str, view_template_id: str) -> dict:
 
 
 @server.tool()
-def apply_view_edit(
+def render_view(object_id: str, view_template_id: str) -> dict:
+    """Rend un objet selon un gabarit de vue (lecture, aucune écriture)."""
+    return _render_view(object_id, view_template_id)
+
+
+def _apply_view_edit(
     object_id: str,
     expected_version: int,
     changes: dict,
     author_username: str | None = None,
     agent_name: str | None = None,
 ) -> dict:
-    """Applique une modification structurée (issue d'une vue) si la version attendue tient."""
     try:
         author, agent_name = _resolve_actor(author_username, agent_name)
     except ObjectDoesNotExist as exc:
@@ -190,3 +233,15 @@ def apply_view_edit(
         return {"error": "actor", "message": str(exc)}
 
     return serialize_version(version)
+
+
+@server.tool()
+def apply_view_edit(
+    object_id: str,
+    expected_version: int,
+    changes: dict,
+    author_username: str | None = None,
+    agent_name: str | None = None,
+) -> dict:
+    """Applique une modification structurée (issue d'une vue) si la version attendue tient."""
+    return _apply_view_edit(object_id, expected_version, changes, author_username, agent_name)
