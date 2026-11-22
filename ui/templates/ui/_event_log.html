@@ -40,6 +40,8 @@
         </ul>
       {% elif proposal.operation == "manual-prompt" %}
         <div class="muted">{{ proposal.input.text|truncatechars:140 }}</div>
+      {% elif proposal.operation == "observation" %}
+        <div class="muted">{{ proposal.input.text }}</div>
       {% endif %}
 
       {% if proposal.decision == "pending" and proposal.output %}
