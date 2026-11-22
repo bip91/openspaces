@@ -1,9 +1,40 @@
 import pytest
 
+from engine.models import ViewTemplate
 from engine.services.create import create_object
 from engine.services.errors import VersionConflict
 from engine.services.link import link_objects
 from engine.services.render import apply_view_edit, render_view
+
+
+def test_render_view_sequence_diagram_lists_participants_and_steps(space, table_type, user):
+    use_case = create_object(
+        space,
+        table_type,
+        {
+            "name": "cas-usage-demo",
+            "steps": [
+                {"from": "architecte", "to": "agent", "message": "propose une idée"},
+                {"from": "agent", "to": "spec", "message": "reformule en concept"},
+            ],
+        },
+        author=user,
+    )
+    view_template = ViewTemplate.objects.create(
+        name="cas-usage-sequence",
+        applies_to=table_type,
+        kind=ViewTemplate.Kind.STRUCTURED,
+        renderer="mermaid.sequenceDiagram",
+    )
+
+    result = render_view(use_case, view_template)
+
+    assert "sequenceDiagram" in result["text"]
+    assert "participant architecte" in result["text"]
+    assert "participant agent" in result["text"]
+    assert "participant spec" in result["text"]
+    assert "architecte->>agent: propose une idée" in result["text"]
+    assert "agent->>spec: reformule en concept" in result["text"]
 
 
 def test_render_view_table_returns_fields_as_rows(commande, view_template_table):

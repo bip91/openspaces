@@ -5,6 +5,7 @@ from engine.models import Aspect, Layer, Link, Object, ObjectType, Space, ViewTe
 from engine.services.create import create_object
 from engine.services.link import link_objects
 from ui.demo import (
+    DEMO_DECISION_TYPE_NAME,
     DEMO_EXIGENCE_OBJECT_NAME,
     DEMO_FOLDER_OBJECT_NAME,
     DEMO_FOLDER_TYPE_NAME,
@@ -15,8 +16,10 @@ from ui.demo import (
     DEMO_TABLE_OBJECT_NAME,
     DEMO_TABLE_TYPE_NAME,
     DEMO_TYPE_NAME,
+    DEMO_USE_CASE_TYPE_NAME,
     DEMO_USERNAME,
     FOLDER_LINK_NATURE,
+    USE_CASE_SEQUENCE_VIEW_NAME,
 )
 
 
@@ -189,6 +192,58 @@ class Command(BaseCommand):
                 link_objects(FOLDER_LINK_NATURE, classified, folder, author=user)
                 classification_created = True
 
+        # Décision et Cas d'usage : deux types du périmètre jamais instanciés avant
+        # la discussion sur le persona « Architecte produit » (voir document_project).
+        decision_type, decision_type_created = ObjectType.objects.get_or_create(
+            name=DEMO_DECISION_TYPE_NAME,
+            scope=ObjectType.Scope.BASE,
+            defaults={
+                "schema": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "justification": {"type": "string"},
+                        "statut": {"type": "string"},
+                    },
+                }
+            },
+        )
+
+        use_case_type, use_case_type_created = ObjectType.objects.get_or_create(
+            name=DEMO_USE_CASE_TYPE_NAME,
+            scope=ObjectType.Scope.BASE,
+            defaults={
+                "schema": {
+                    "type": "object",
+                    "required": ["name", "steps"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "persona": {"type": "string"},
+                        "description": {"type": "string"},
+                        "steps": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": ["from", "to", "message"],
+                                "properties": {
+                                    "from": {"type": "string"},
+                                    "to": {"type": "string"},
+                                    "message": {"type": "string"},
+                                },
+                            },
+                        },
+                    },
+                }
+            },
+        )
+
+        _, use_case_view_created = ViewTemplate.objects.get_or_create(
+            name=USE_CASE_SEQUENCE_VIEW_NAME,
+            applies_to=use_case_type,
+            defaults={"kind": ViewTemplate.Kind.STRUCTURED, "renderer": "mermaid.sequenceDiagram", "editable": False},
+        )
+
         created = [
             name
             for name, was_created in (
@@ -206,6 +261,9 @@ class Command(BaseCommand):
                 ("type Dossier", folder_type_created),
                 ("dossier de démo", folder_created),
                 ("classement dans le dossier", classification_created),
+                ("type Décision", decision_type_created),
+                ("type Cas d'usage", use_case_type_created),
+                ("gabarit cas-usage-sequence", use_case_view_created),
             )
             if was_created
         ]

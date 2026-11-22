@@ -20,6 +20,9 @@ DEMO_EXIGENCE_OBJECT_NAME = "délai obligatoire"
 DEMO_FOLDER_TYPE_NAME = "Dossier"
 DEMO_FOLDER_OBJECT_NAME = "classeur-démo"
 FOLDER_LINK_NATURE = "classification"
+DEMO_DECISION_TYPE_NAME = "Décision"
+DEMO_USE_CASE_TYPE_NAME = "Cas d'usage"
+USE_CASE_SEQUENCE_VIEW_NAME = "cas-usage-sequence"
 
 
 def demo_context():

@@ -58,7 +58,7 @@
         </table>
         <button type="submit">enregistrer</button>
       </form>
-    {% elif view.template.renderer == "mermaid.erDiagram" %}
+    {% elif view.template.renderer == "mermaid.erDiagram" or view.template.renderer == "mermaid.sequenceDiagram" %}
       <pre class="mermaid">{{ view.rendered.text }}</pre>
       <details>
         <summary class="muted">source (debug)</summary>

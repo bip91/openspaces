@@ -73,6 +73,18 @@ def render_view(object, view_template):
         lines += _mermaid_relationships(object, name)
         return {"text": "\n".join(lines)}
 
+    if view_template.renderer == "mermaid.sequenceDiagram":
+        steps = attributes.get("steps", [])
+        participants = []
+        for step in steps:
+            for participant in (step.get("from"), step.get("to")):
+                if participant and participant not in participants:
+                    participants.append(participant)
+        lines = ["sequenceDiagram"]
+        lines += [f"    participant {participant}" for participant in participants]
+        lines += [f"    {step['from']}->>{step['to']}: {step['message']}" for step in steps]
+        return {"text": "\n".join(lines)}
+
     if view_template.renderer == "markdown":
         lines = [f"# {attributes.get('name', '(sans nom)')}", ""]
         for field in fields:
