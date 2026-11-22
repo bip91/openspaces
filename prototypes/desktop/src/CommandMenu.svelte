@@ -13,7 +13,13 @@
 
   let query = "";
 
-  $: filtered = commands.filter((c) => c.toLowerCase().includes(query.toLowerCase()));
+  // Test UI/UX : « ! » bascule le prompt en mode « commande directe » (comme
+  // le préfixe « ! » de ce même outil pour lancer une commande shell) —
+  // évalue le ressenti d'un caractère spécial pour sortir de la liste connue,
+  // pas une vraie exécution derrière.
+  $: isRawMode = query.startsWith("!");
+  $: rawCommand = query.slice(1).trim();
+  $: filtered = isRawMode ? [] : commands.filter((c) => c.toLowerCase().includes(query.toLowerCase()));
 
   function focusOnMount(node) {
     node.focus();
@@ -27,9 +33,10 @@
     if (event.key === "Escape") {
       event.stopPropagation();
       onClose();
-    } else if (event.key === "Enter" && filtered.length > 0) {
+    } else if (event.key === "Enter") {
       event.stopPropagation();
-      choose(filtered[0]);
+      if (isRawMode && rawCommand) choose(`!${rawCommand}`);
+      else if (!isRawMode && filtered.length > 0) choose(filtered[0]);
     }
   }
 </script>
@@ -46,17 +53,26 @@
     {#if title}<div class="menu-title">{title}</div>{/if}
     <input
       type="text"
-      placeholder="Tape pour filtrer ou rappeler une commande…"
+      class:raw-mode={isRawMode}
+      placeholder="Tape pour filtrer, ou « ! » pour une commande directe…"
       bind:value={query}
       use:focusOnMount
       on:keydown={onKeydown}
     />
     <ul>
-      {#each filtered as command}
-        <li><button on:click={() => choose(command)}>{command}</button></li>
+      {#if isRawMode}
+        {#if rawCommand}
+          <li><button class="raw-item" on:click={() => choose(`!${rawCommand}`)}>→ Exécuter « {rawCommand} »</button></li>
+        {:else}
+          <li class="empty">Tape une commande après le « ! »</li>
+        {/if}
       {:else}
-        <li class="empty">Aucune commande</li>
-      {/each}
+        {#each filtered as command}
+          <li><button on:click={() => choose(command)}>{command}</button></li>
+        {:else}
+          <li class="empty">Aucune commande</li>
+        {/each}
+      {/if}
     </ul>
   </div>
 </div>
@@ -101,6 +117,16 @@
     padding: 0.5rem 0.7rem;
     font-size: 0.85rem;
     outline: none;
+  }
+  input.raw-mode {
+    background: #fff7ed;
+    border-bottom-color: #f59e0b;
+    font-family: ui-monospace, monospace;
+  }
+
+  .raw-item {
+    color: #b45309;
+    font-family: ui-monospace, monospace;
   }
 
   ul {

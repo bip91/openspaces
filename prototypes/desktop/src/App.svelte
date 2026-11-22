@@ -1,5 +1,6 @@
 <script>
   import CommandMenu from "./CommandMenu.svelte";
+  import { LayoutGrid, Link as LinkIcon, Cpu, Settings } from "@lucide/svelte";
 
   // Prototype jetable : fusion des prototypes précédents (bande d'espaces,
   // fenêtrage glissable/accrochable), pas branché sur le vrai moteur, données
@@ -319,28 +320,66 @@
 </script>
 
 <div class="shell">
-  <nav class="strip" aria-label="Espaces">
-    {#each spaces as space (space.id)}
-      <button
-        class="space-icon"
-        class:active={space.id === activeSpaceId}
-        class:drag-over={space.id === dragOverSpaceId}
-        style="--color: {space.color}"
-        title={space.name}
-        on:click={() => selectSpace(space.id)}
-        on:contextmenu={(e) => openSpaceMenu(e, space)}
-        on:dragover={(e) => onSpaceDragOver(e, space.id)}
-        on:dragleave={onSpaceDragLeave}
-        on:drop={(e) => onSpaceDrop(e, space.id)}
-      >
-        {space.name.slice(0, 1).toUpperCase()}
-      </button>
-    {/each}
-
-    <div class="pinned-dossiers">
-      {#each pinnedDossiers as dossier (dossier.id)}
-        <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
+  <nav class="strip" aria-label="Espaces et outils système">
+    <div class="strip-top">
+      {#each spaces as space (space.id)}
+        <button
+          class="space-icon"
+          class:active={space.id === activeSpaceId}
+          class:drag-over={space.id === dragOverSpaceId}
+          style="--color: {space.color}"
+          title={space.name}
+          on:click={() => selectSpace(space.id)}
+          on:contextmenu={(e) => openSpaceMenu(e, space)}
+          on:dragover={(e) => onSpaceDragOver(e, space.id)}
+          on:dragleave={onSpaceDragLeave}
+          on:drop={(e) => onSpaceDrop(e, space.id)}
+        >
+          {space.name.slice(0, 1).toUpperCase()}
+        </button>
       {/each}
+
+      <div class="pinned-dossiers">
+        {#each pinnedDossiers as dossier (dossier.id)}
+          <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="strip-spacer"></div>
+
+    <!-- Outils système : catalogues globaux (pas scopés à un objet ni un
+    verbe) — distincts des espaces (contexte) et des commandes (barre du
+    bas). Historique n'y est pas : ce n'est pas une destination fixe, il
+    s'ouvre tout seul quand une commande l'invoque sur un objet précis. -->
+    <div class="strip-bottom">
+      <button
+        class="tool-icon"
+        class:open={windows.find((w) => w.id === "objets")?.open}
+        title="Objets"
+        on:click={() => toggleWindow("objets")}
+      >
+        <LayoutGrid size={18} />
+      </button>
+      <button
+        class="tool-icon"
+        class:open={windows.find((w) => w.id === "liens")?.open}
+        title="Liens"
+        on:click={() => toggleWindow("liens")}
+      >
+        <LinkIcon size={18} />
+      </button>
+      <button
+        class="tool-icon"
+        class:open={windows.find((w) => w.id === "bus")?.open}
+        title="Bus"
+        on:click={() => toggleWindow("bus")}
+      >
+        <Cpu size={18} />
+      </button>
+      <button class="tool-icon" title="Paramètres (pas encore construit)" on:click={() => flashAction("Paramètres — pas encore construit")}>
+        <Settings size={18} />
+      </button>
     </div>
   </nav>
 
@@ -414,11 +453,6 @@
           />
           <button type="submit">Envoyer</button>
         </form>
-        <nav class="dock" aria-label="Fenêtres">
-          {#each windows as win (win.id)}
-            <button class:open={win.open} on:click={() => toggleWindow(win.id)}>{win.title}</button>
-          {/each}
-        </nav>
       </div>
     </div>
   </main>
@@ -456,11 +490,51 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.6rem;
     width: 56px;
     padding: 1rem 0;
     background: #fff;
     border-right: 1px solid #ddd;
+  }
+
+  .strip-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .strip-spacer {
+    flex: 1;
+  }
+
+  .strip-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #eee;
+    width: 100%;
+  }
+
+  .tool-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    background: transparent;
+    color: #666;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .tool-icon:hover {
+    background: #f3f4f6;
+  }
+  .tool-icon.open {
+    background: #eff4ff;
+    color: #2563eb;
   }
 
   .space-icon {
@@ -649,23 +723,6 @@
     color: #555;
   }
 
-  .dock {
-    display: flex;
-    gap: 0.5rem;
-  }
-  .dock button {
-    padding: 0.4rem 0.9rem;
-    border-radius: 6px;
-    border: 1px solid #ccc;
-    background: #f3f4f6;
-    font-size: 0.85rem;
-    cursor: pointer;
-  }
-  .dock button.open {
-    background: #2563eb;
-    border-color: #2563eb;
-    color: #fff;
-  }
 
   .toast {
     position: fixed;
