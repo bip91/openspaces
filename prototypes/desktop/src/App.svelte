@@ -1,7 +1,11 @@
 <script>
-  // Prototype jetable : fusion des deux prototypes précédents (bande
-  // d'espaces + fenêtrage glissable/accrochable), pas branché sur le vrai
-  // moteur, données bidon. Teste l'ensemble ensemble, pas chaque geste isolé.
+  import CommandMenu from "./CommandMenu.svelte";
+
+  // Prototype jetable : fusion des prototypes précédents (bande d'espaces,
+  // fenêtrage glissable/accrochable), pas branché sur le vrai moteur, données
+  // bidon. Le menu radial a été remplacé par un menu contextuel générique
+  // (prompt en haut, commandes principales dessous) — testé en vrai, pas
+  // forcément plus clair qu'une liste.
 
   let spaces = [
     { id: "demo", name: "démo", color: "#6b7280" },
@@ -21,37 +25,97 @@
 
   $: activeObjects = objects.filter((o) => o.spaceId === activeSpaceId);
 
-  // --- Menu radial des verbes universels (clic droit sur un objet) ---
-  // Sept verbes : la taille où un menu radial reste lisible (spec : « sept ou
-  // huit verbes universels »). Pas de « créer » ici — on agit sur un objet
-  // déjà là, pas sur du vide.
-  const VERBS = ["Voir", "Modifier", "Lier", "Classer", "Typer", "Décider", "Historique"];
-  let radialMenu = null; // { x, y, objectName } | null
+  // Dossiers épinglés : vivent dans un espace (même FK que tout le reste du
+  // moteur réel), affichés sous la bulle de l'espace actif — navigation
+  // fréquente, donc toujours visible, pas caché derrière un menu.
+  let dossiers = [
+    { id: 1, name: "Clients Lumen", spaceId: "lumen" },
+    { id: 2, name: "Exigences", spaceId: "demo" },
+  ];
+  $: pinnedDossiers = dossiers.filter((d) => d.spaceId === activeSpaceId);
+
   let lastAction = "";
-
-  function sliceOffset(index, total, radius = 76) {
-    const angle = (2 * Math.PI * index) / total - Math.PI / 2;
-    return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
-  }
-
-  function openRadialMenu(event, objectName) {
-    event.preventDefault();
-    radialMenu = { x: event.clientX, y: event.clientY, objectName };
-  }
-
-  function closeRadialMenu() {
-    radialMenu = null;
-  }
-
-  function chooseVerb(verb) {
-    const { objectName, x, y } = radialMenu;
-    lastAction = `${verb} — ${objectName}`;
-    closeRadialMenu();
+  let toastTimer;
+  function flashAction(text) {
+    lastAction = text;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (lastAction = ""), 2200);
-    if (verb === "Historique") openHistoryWindow(objectName, x, y);
   }
-  let toastTimer;
+
+  // --- Menu contextuel générique (CommandMenu.svelte) ---
+
+  let commandMenu = null; // { x, y, title, commands, onChoose } | null
+
+  function closeCommandMenu() {
+    commandMenu = null;
+  }
+
+  const OBJECT_COMMANDS = ["Voir", "Modifier", "Lier", "Classer", "Typer", "Décider", "Historique"];
+
+  function openObjectMenu(event, objectName) {
+    event.preventDefault();
+    const { clientX: x, clientY: y } = event;
+    commandMenu = {
+      x,
+      y,
+      title: objectName,
+      commands: OBJECT_COMMANDS,
+      onChoose: (cmd) => handleObjectCommand(cmd, objectName, x, y),
+    };
+  }
+
+  function handleObjectCommand(cmd, objectName, x, y) {
+    if (cmd === "Historique") {
+      closeCommandMenu();
+      openHistoryWindow(objectName, x, y);
+      return;
+    }
+    if (cmd === "Classer") {
+      openClasserMenu(objectName, x, y);
+      return;
+    }
+    closeCommandMenu();
+    flashAction(`${cmd} — ${objectName}`);
+  }
+
+  function openClasserMenu(objectName, x, y) {
+    const names = dossiers.filter((d) => d.spaceId === activeSpaceId).map((d) => d.name);
+    commandMenu = {
+      x,
+      y,
+      title: `Classer « ${objectName} » dans…`,
+      commands: names.length ? names : ["(aucun dossier dans cet espace)"],
+      onChoose: (dossierName) => {
+        closeCommandMenu();
+        flashAction(`Classé « ${objectName} » → « ${dossierName} »`);
+      },
+    };
+  }
+
+  const SPACE_COMMANDS = ["Nouveau dossier ici", "Renommer l'espace"];
+
+  function openSpaceMenu(event, space) {
+    event.preventDefault();
+    const { clientX: x, clientY: y } = event;
+    commandMenu = {
+      x,
+      y,
+      title: space.name,
+      commands: SPACE_COMMANDS,
+      onChoose: (cmd) => handleSpaceCommand(cmd, space),
+    };
+  }
+
+  function handleSpaceCommand(cmd, space) {
+    closeCommandMenu();
+    if (cmd === "Nouveau dossier ici") {
+      const name = `Dossier ${dossiers.filter((d) => d.spaceId === space.id).length + 1}`;
+      dossiers = [...dossiers, { id: Date.now(), name, spaceId: space.id }];
+      flashAction(`Dossier « ${name} » créé dans « ${space.name} »`);
+    } else {
+      flashAction(`${cmd} (simulation) — « ${space.name} »`);
+    }
+  }
 
   // --- Prompt global (barre du bas) : simulation scriptée, pas de vraie IA
   // ni de clé d'API dans ce bundle client — choisi en conversation plutôt que
@@ -264,6 +328,7 @@
         style="--color: {space.color}"
         title={space.name}
         on:click={() => selectSpace(space.id)}
+        on:contextmenu={(e) => openSpaceMenu(e, space)}
         on:dragover={(e) => onSpaceDragOver(e, space.id)}
         on:dragleave={onSpaceDragLeave}
         on:drop={(e) => onSpaceDrop(e, space.id)}
@@ -271,6 +336,12 @@
         {space.name.slice(0, 1).toUpperCase()}
       </button>
     {/each}
+
+    <div class="pinned-dossiers">
+      {#each pinnedDossiers as dossier (dossier.id)}
+        <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
+      {/each}
+    </div>
   </nav>
 
   <main>
@@ -297,14 +368,14 @@
             {#if win.id === "objets"}
               <p class="hint">
                 Glisse une carte sur une bulle d'espace pour la déplacer. Clic
-                droit pour le menu des verbes.
+                droit pour le menu des commandes.
               </p>
               {#each activeObjects as object (object.id)}
                 <div
                   class="object-card"
                   draggable="true"
                   on:dragstart={(e) => onObjectDragStart(e, object.id)}
-                  on:contextmenu={(e) => openRadialMenu(e, object.name)}
+                  on:contextmenu={(e) => openObjectMenu(e, object.name)}
                 >
                   {object.name}
                 </div>
@@ -353,30 +424,15 @@
   </main>
 </div>
 
-{#if radialMenu}
-  <div
-    class="radial-overlay"
-    role="button"
-    tabindex="0"
-    aria-label="Fermer le menu"
-    on:click={closeRadialMenu}
-    on:contextmenu|preventDefault={closeRadialMenu}
-    on:keydown={(e) => e.key === "Escape" && closeRadialMenu()}
-  >
-    <div class="radial-menu" style="left:{radialMenu.x}px; top:{radialMenu.y}px">
-      <div class="radial-center">{radialMenu.objectName}</div>
-      {#each VERBS as verb, i}
-        {@const offset = sliceOffset(i, VERBS.length)}
-        <button
-          class="radial-slice"
-          style="transform: translate({offset.dx}px, {offset.dy}px) translate(-50%, -50%)"
-          on:click|stopPropagation={() => chooseVerb(verb)}
-        >
-          {verb}
-        </button>
-      {/each}
-    </div>
-  </div>
+{#if commandMenu}
+  <CommandMenu
+    x={commandMenu.x}
+    y={commandMenu.y}
+    title={commandMenu.title}
+    commands={commandMenu.commands}
+    onChoose={commandMenu.onChoose}
+    onClose={closeCommandMenu}
+  />
 {/if}
 
 {#if lastAction}
@@ -428,6 +484,31 @@
   .space-icon.drag-over {
     transform: scale(1.2);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 40%, transparent);
+  }
+
+  .pinned-dossiers {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #eee;
+    width: 100%;
+  }
+
+  .dossier-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: #f3f4f6;
+    border: 1px solid #ddd;
+    color: #555;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   main {
@@ -583,60 +664,6 @@
   .dock button.open {
     background: #2563eb;
     border-color: #2563eb;
-    color: #fff;
-  }
-
-  .radial-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
-    background: transparent;
-    border: none;
-    padding: 0;
-  }
-
-  .radial-menu {
-    position: absolute;
-    width: 0;
-    height: 0;
-  }
-
-  .radial-center {
-    position: absolute;
-    left: 0;
-    top: 0;
-    transform: translate(-50%, -50%);
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: #1f2937;
-    color: #fff;
-    font-size: 0.65rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    padding: 0.2rem;
-    overflow: hidden;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-  }
-
-  .radial-slice {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 64px;
-    height: 40px;
-    border-radius: 20px;
-    border: 1px solid #ddd;
-    background: #fff;
-    font-size: 0.75rem;
-    cursor: pointer;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
-    transition: background 0.08s ease, color 0.08s ease;
-  }
-  .radial-slice:hover {
-    background: #2563eb;
     color: #fff;
   }
 
