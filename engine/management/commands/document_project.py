@@ -272,6 +272,18 @@ OBSERVATIONS = [
         "parfait et l'objectif réel rester non atteint si l'interaction "
         "s'avère plus dure que prévu.",
     ),
+    (
+        "gestionnaire d'objets : Django/htmx maintenant, Svelte non écarté pour plus tard",
+        "L'arbre de dossiers + aperçu d'objet (remplaçant /objects/browse/) "
+        "est construit dans ui/ (Django + htmx, le harnais de test "
+        "existant) pour réutiliser tout de suite les vraies données et les "
+        "vrais services (sous-dossier-de, classification, render_view). "
+        "L'utilisateur n'est pas convaincu que ce choix tienne : il envisage "
+        "encore une version Svelte comme outil de la future interface, pas "
+        "seulement comme prototype jetable. On avance sur Django/htmx pour "
+        "cette passe parce que c'est immédiatement branché sur le réel, sans "
+        "que ça règle la question pour la suite.",
+    ),
 ]
 
 
