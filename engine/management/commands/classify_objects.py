@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from engine.models import Link, Object, ObjectType
 from engine.services.create import create_object
 from engine.services.link import link_objects
-from ui.demo import DEMO_FOLDER_TYPE_NAME, FOLDER_LINK_NATURE, demo_context
+from ui.demo import DEMO_FOLDER_TYPE_NAME, DOSSIER_PARENT_NATURE, FOLDER_LINK_NATURE, demo_context
 
 # Classement par activité, pas par type (le filtre type existe déjà sur
 # /objects/browse/, inutile de le dupliquer en dossier). Noms d'objets réels
@@ -96,9 +96,36 @@ class Command(BaseCommand):
                 create_object(space, folder_type, {"name": folder_name, "query": query}, author=user)
                 dynamic_folders_created.append(folder_name)
 
+        # Hiérarchie de dossier pour la navigation seulement — jamais pour
+        # l'appartenance (précédent Lightroom : Collection Set regroupe des
+        # Collections sans rien posséder lui-même). « Vues » ne contient rien en
+        # propre : sélectionner « Vues » doit montrer une liste vide, c'est
+        # volontaire — seuls ses sous-dossiers ont une vraie appartenance.
+        views_folder, views_folder_created = (
+            Object.objects.filter(
+                space=space, base_type=folder_type, current_version__attributes__name="Vues"
+            ).first(),
+            False,
+        )
+        if views_folder is None:
+            views_folder = create_object(space, folder_type, {"name": "Vues"}, author=user)
+            views_folder_created = True
+
+        nestings_created = 0
+        for folder_name in DYNAMIC_FOLDERS:
+            dynamic_folder = Object.objects.get(
+                space=space, base_type=folder_type, current_version__attributes__name=folder_name
+            )
+            if not Link.objects.filter(
+                source=dynamic_folder, target=views_folder, nature=DOSSIER_PARENT_NATURE
+            ).exists():
+                link_objects(DOSSIER_PARENT_NATURE, dynamic_folder, views_folder, author=user)
+                nestings_created += 1
+
         self.stdout.write(
             self.style.SUCCESS(
                 f"{len(folders_created)} dossier(s) créé(s), {classifications_created} classement(s) créé(s), "
-                f"dossiers dynamiques créés : {dynamic_folders_created or 'aucun'}."
+                f"dossiers dynamiques créés : {dynamic_folders_created or 'aucun'}, "
+                f"dossier « Vues » créé : {views_folder_created}, sous-dossiers rattachés : {nestings_created}."
             )
         )

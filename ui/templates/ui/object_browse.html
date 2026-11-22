@@ -14,7 +14,7 @@
     <select name="dossier">
       <option value="">tous les dossiers</option>
       {% for d in dossiers %}
-        <option value="{{ d.id }}" {% if selected_dossier == d.id|stringformat:"s" %}selected{% endif %}>{{ d.current_version.attributes.name }}</option>
+        <option value="{{ d.id }}" {% if selected_dossier == d.id|stringformat:"s" %}selected{% endif %}>{% if d.depth %}— {% endif %}{{ d.current_version.attributes.name }}</option>
       {% endfor %}
     </select>
     <button type="submit">filtrer</button>

@@ -37,6 +37,25 @@ def test_decide_proposal_accepts_extraction_and_chains_link_proposal(
     assert b"commande" in response.content
 
 
+def test_object_browse_nests_child_dossiers_under_their_parent_for_display(
+    client, demo_context, demo_user, demo_folder_type
+):
+    from engine.services.link import link_objects
+
+    space, layer, document_type = demo_context
+    parent = create_object(space, demo_folder_type, {"name": "Vues"}, author=demo_user)
+    child = create_object(space, demo_folder_type, {"name": "Enfant"}, author=demo_user)
+    link_objects("sous-dossier-de", child, parent, author=demo_user)
+
+    response = client.get(reverse("object-browse"))
+    dossier_section = response.content.split(b'name="dossier"')[1].split(b"</select>")[0]
+
+    # L'enfant apparaît juste après son parent, indenté — mais n'importe plus
+    # (même sémantique) en dehors de ça : la hiérarchie ne change rien à
+    # l'appartenance, juste à l'ordre d'affichage.
+    assert dossier_section.index(b"Vues") < dossier_section.index(b"\xe2\x80\x94 Enfant")
+
+
 def test_object_browse_filters_by_type(client, demo_context, demo_commande, demo_table_type):
     client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
 

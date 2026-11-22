@@ -23,7 +23,13 @@ from engine.services.render import apply_view_edit as apply_view_edit_service
 from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
-from ui.demo import DEMO_FOLDER_TYPE_NAME, DEMO_TABLE_TYPE_NAME, FOLDER_LINK_NATURE, demo_context
+from ui.demo import (
+    DEMO_FOLDER_TYPE_NAME,
+    DEMO_TABLE_TYPE_NAME,
+    DOSSIER_PARENT_NATURE,
+    FOLDER_LINK_NATURE,
+    demo_context,
+)
 
 
 def _lookup(queryset, pk_value):
@@ -88,6 +94,40 @@ def object_list(request):
     return render(request, "ui/_object_list.html", _object_list_context(space))
 
 
+def _dossier_tree(space, folder_type):
+    """Dossiers ordonnés pour l'affichage : racines, puis leurs enfants indentés
+    juste en dessous (nature `sous-dossier-de`) — navigation seulement, jamais
+    l'appartenance (même principe que Lightroom Collection Set/Collection)."""
+    dossiers = list(
+        Object.objects.filter(space=space, base_type=folder_type).select_related("current_version")
+    )
+    parent_by_child_id = dict(
+        Link.objects.filter(source__in=dossiers, nature=DOSSIER_PARENT_NATURE).values_list(
+            "source_id", "target_id"
+        )
+    )
+    children_by_parent_id = {}
+    roots = []
+    for dossier in dossiers:
+        parent_id = parent_by_child_id.get(dossier.id)
+        if parent_id:
+            children_by_parent_id.setdefault(parent_id, []).append(dossier)
+        else:
+            roots.append(dossier)
+
+    def _name(obj):
+        return obj.current_version.attributes.get("name", "")
+
+    ordered = []
+    for root in sorted(roots, key=_name):
+        root.depth = 0
+        ordered.append(root)
+        for child in sorted(children_by_parent_id.get(root.id, []), key=_name):
+            child.depth = 1
+            ordered.append(child)
+    return ordered
+
+
 @require_GET
 def object_browse(request):
     space, layer, document_type, user = demo_context()
@@ -123,11 +163,7 @@ def object_browse(request):
     )
 
     folder_type = ObjectType.objects.filter(name=DEMO_FOLDER_TYPE_NAME, scope=ObjectType.Scope.BASE).first()
-    dossiers = (
-        Object.objects.filter(space=space, base_type=folder_type).select_related("current_version")
-        if folder_type
-        else Object.objects.none()
-    )
+    dossiers = _dossier_tree(space, folder_type) if folder_type else []
     types = ObjectType.objects.filter(scope=ObjectType.Scope.BASE).order_by("name")
 
     return render(
