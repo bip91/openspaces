@@ -48,6 +48,10 @@
     closeRadialMenu();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (lastAction = ""), 2200);
+    if (verb === "Historique") {
+      windows = windows.map((w) => (w.id === "historique" ? { ...w, open: true } : w));
+      bringToFront("historique");
+    }
   }
   let toastTimer;
 
@@ -59,12 +63,18 @@
     "create_object @ harnais-web -> autorisé (23 ms)",
     "create_object @ lecteur-demo -> refusé (forbidden)",
   ];
+  const historyLines = [
+    "v3 — agent (qwen2.5:1.5b) — 21/11 23:36",
+    "v2 — humain (demo) — 21/11 22:17",
+    "v1 — humain (demo) — 21/11 22:16",
+  ];
 
   let nextZ = 1;
   let windows = [
     { id: "objets", title: "Objets", x: 100, y: 50, width: 340, height: 260, z: nextZ++, open: true },
     { id: "liens", title: "Liens", x: 500, y: 110, width: 340, height: 200, z: nextZ++, open: true },
     { id: "bus", title: "Bus", x: 300, y: 330, width: 380, height: 190, z: nextZ++, open: false },
+    { id: "historique", title: "Historique", x: 560, y: 340, width: 320, height: 180, z: nextZ++, open: false },
   ];
 
   function selectSpace(id) {
@@ -264,6 +274,8 @@
               {/each}
             {:else if win.id === "liens"}
               {#each linkLines as line}<p>{line}</p>{/each}
+            {:else if win.id === "historique"}
+              {#each historyLines as line}<p>{line}</p>{/each}
             {:else}
               {#each busLines as line}<p>{line}</p>{/each}
             {/if}
