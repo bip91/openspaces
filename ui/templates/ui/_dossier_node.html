@@ -4,7 +4,7 @@
      hx-get="{% url 'object-content' %}?type={{ selected_type }}&dossier={{ dossier.id }}"
      hx-target="#browse-content" hx-swap="innerHTML"
      hx-push-url="{% url 'object-browse' %}?type={{ selected_type }}&dossier={{ dossier.id }}">
-    📁 {{ dossier.current_version.attributes.name }}
+    {% if dossier.is_dynamic %}⚙️{% else %}📁{% endif %} {{ dossier.current_version.attributes.name }}
     {% if dossier.is_dynamic %}<span class="dyn-badge" title="Dossier dynamique : appartenance calculée, pas posée">dynamique</span>{% endif %}
   </a>
   {% if dossier.children %}
