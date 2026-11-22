@@ -8,6 +8,7 @@ Le but n'est pas un produit : la maquette vérifie quatre hypothèses (voir la s
 - Spec de référence : « Environnement objet collaboratif — expression de besoin et spec maquette » (Claude Docs, exportée en Markdown dans `docs/spec.md`).
 - Problème de fond : la manière dont l'utilisateur interagit avec l'information. Le moteur en est la condition ; l'interaction sera traitée après la maquette.
 - État : lots 1 (moteur), 2 (vues) et 3 (calques, aspects, noyau du bus de coordination) faits. Lot 4 (IA) en cours : extraction d'exigences et proposition de liens faites (Ollama + Qwen2.5 1.5B local, voir `ai/`) ; réinterprétation de spec reportée (demande un modèle 7-14B ou une passerelle selon la spec, hors de portée locale sur ce poste). Lot 5 (test) reste à faire.
+- Hors lots formels, exploration de l'interaction (le problème de fond, pas encore traité) : prototypes Svelte jetables et déconnectés du moteur (`prototypes/`, espaces/fenêtres/dossiers/menu contextuel/commande) pour tester le ressenti des gestes ; en parallèle, le harnais `ui/` a gagné un vrai gestionnaire d'objets sur données réelles (arbre des dossiers statiques et dynamiques, aperçu avec sélecteur de vues, et une racine « Explorer par attribut » — navigation calculée à la volée sur le schéma et les valeurs réellement présentes, pas un second mécanisme de classement à côté de `Dossier`). Question non tranchée : si une interface Svelte devient réelle plutôt qu'un prototype, l'API qui la nourrirait devrait exposer le contrat MCP existant, pas une API ad hoc parallèle (règle 10).
 
 ## Langue
 
@@ -32,7 +33,7 @@ Le but n'est pas un produit : la maquette vérifie quatre hypothèses (voir la s
 | Calque | `Layer` | lecture d'un espace par une personne ou un rôle |
 | Espace | `Space` | périmètre de travail, privé ou partagé |
 | Objet-frontière | `boundary object` | objet partagé par plusieurs calques (pas de modèle dédié) |
-| Dossier | `Object` (type « Dossier ») + `Link` (nature `classification`) | classement multi-valué, pas un sous-espace, pas la seule voie de recherche ; pas de modèle dédié |
+| Dossier | `Object` (type « Dossier ») + `Link` (nature `classification`) | classement multi-valué, pas un sous-espace, pas la seule voie de recherche ; pas de modèle dédié ; attribut `query` optionnel (`filter`/`exclude` façon Django) pour un dossier dynamique, appartenance calculée plutôt que posée |
 | Divergence | `Divergence` | écart signalé entre calques, jamais corrigé en silence |
 | Objet dérivé | `derived object` | produit par une opération, recalculable |
 | Opération | `Operation` | verbe humain ou opération IA |

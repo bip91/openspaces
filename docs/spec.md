@@ -91,6 +91,22 @@ le jour où c'est traité. Enfin, le geste de classement lui-même (aujourd'hui
 un formulaire) pose le modèle de données, pas l'ergonomie à coût quasi nul
 visée par la future couche d'interaction (hors périmètre maquette).
 
+**Dossier dynamique et exploration par attribut (validé en harnais).** Un
+`Dossier` peut porter un attribut `query` optionnel (`filter`/`exclude`,
+syntaxe ORM Django reprise telle quelle plutôt qu'inventée) : son
+appartenance est alors calculée à l'affichage, pas posée par un `Link` de
+classification — déplacer un objet hors d'un dossier dynamique revient à
+changer l'attribut ou la relation concernée. Reprend un précédent établi
+(Smart Folders macOS, Smart Collections Lightroom), pas une invention.
+Complémentaire, pas concurrent : une racine « Explorer par attribut »
+(harnais `ui/`) laisse naviguer type → attribut → valeur sur le schéma et
+les valeurs réellement présentes, calculé à la volée sans aucune écriture
+— utile pour chercher sans savoir encore quoi nommer, alors qu'un dossier
+dynamique nommé reste la façon de figer et réutiliser un filtre qui
+mérite un nom. Les deux coexistent sans dupliquer `Dossier` comme
+mécanisme de classement (voir le Décision correspondante, journalisée
+dans le moteur par `document_project`).
+
 ## Concepts et vocabulaire
 
 L'utilisateur ne manipule que trois notions : objets, espaces, vues. Les autres restent internes ou n'apparaissent que lorsqu'elles servent.
