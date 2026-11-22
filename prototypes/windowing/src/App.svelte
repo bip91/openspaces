@@ -44,6 +44,40 @@
 
   let drag = null; // { id, startX, startY, originX, originY }
   let resize = null; // { id, startX, startY, originW, originH }
+  let desktopEl;
+  let activeZone = null; // null | "left" | "right" | "maximize" | "top-left" | "top-right"
+
+  const EDGE = 28;
+
+  function computeZone(clientX, clientY, rect) {
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    if (y < EDGE) {
+      if (x < rect.width * 0.33) return "top-left";
+      if (x > rect.width * 0.67) return "top-right";
+      return "maximize";
+    }
+    if (x < EDGE) return "left";
+    if (x > rect.width - EDGE) return "right";
+    return null;
+  }
+
+  function zoneRect(zone, w, h) {
+    switch (zone) {
+      case "left":
+        return { x: 0, y: 0, width: w / 2, height: h };
+      case "right":
+        return { x: w / 2, y: 0, width: w / 2, height: h };
+      case "maximize":
+        return { x: 0, y: 0, width: w, height: h };
+      case "top-left":
+        return { x: 0, y: 0, width: w / 2, height: h / 2 };
+      case "top-right":
+        return { x: w / 2, y: 0, width: w / 2, height: h / 2 };
+      default:
+        return null;
+    }
+  }
 
   function bringToFront(id) {
     nextZ += 1;
@@ -69,9 +103,17 @@
     windows = windows.map((w) =>
       w.id === drag.id ? { ...w, x: drag.originX + dx, y: drag.originY + dy } : w
     );
+    const rect = desktopEl.getBoundingClientRect();
+    activeZone = computeZone(event.clientX, event.clientY, rect);
   }
 
   function onDragEnd() {
+    if (activeZone && desktopEl) {
+      const rect = desktopEl.getBoundingClientRect();
+      const target = zoneRect(activeZone, rect.width, rect.height);
+      windows = windows.map((w) => (w.id === drag.id ? { ...w, ...target } : w));
+    }
+    activeZone = null;
     drag = null;
     window.removeEventListener("pointermove", onDragMove);
     window.removeEventListener("pointerup", onDragEnd);
@@ -104,7 +146,14 @@
 </script>
 
 <main>
-  <div class="desktop">
+  <div class="desktop" bind:this={desktopEl}>
+    {#if activeZone}
+      {@const preview = zoneRect(activeZone, desktopEl.clientWidth, desktopEl.clientHeight)}
+      <div
+        class="snap-preview"
+        style="left:{preview.x}px; top:{preview.y}px; width:{preview.width}px; height:{preview.height}px"
+      ></div>
+    {/if}
     {#each windows.filter((w) => w.open) as win (win.id)}
       <section
         class="window"
@@ -156,6 +205,15 @@
     position: relative;
     flex: 1;
     overflow: hidden;
+  }
+
+  .snap-preview {
+    position: absolute;
+    background: rgba(37, 99, 235, 0.18);
+    border: 2px solid rgba(37, 99, 235, 0.6);
+    border-radius: 4px;
+    pointer-events: none;
+    transition: all 0.08s ease;
   }
 
   .window {
