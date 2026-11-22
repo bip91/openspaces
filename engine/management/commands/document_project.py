@@ -101,6 +101,24 @@ PROTOTYPES = [
             {"from": "bande", "to": "objet", "message": "déplace l'objet vers cet espace"},
         ],
     },
+    {
+        "name": "Prototype — fenêtrage glissable",
+        "persona": "architecte produit",
+        "description": (
+            "prototypes/windowing (Svelte + Vite), jetable, données bidon, pas "
+            "branché sur le vrai moteur. Teste le geste : fenêtres "
+            "déplaçables/redimensionnables, et Objets/Liens/Bus (pages Django "
+            "réelles) rouvertes comme des fenêtres séparées plutôt que des "
+            "pages qu'on quitte pour y aller — première application concrète "
+            "de B9 (comparer sans basculer)."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "barre-titre", "message": "glisse pour déplacer la fenêtre"},
+            {"from": "utilisateur", "to": "coin", "message": "glisse pour redimensionner"},
+            {"from": "utilisateur", "to": "dock", "message": "clique Objets/Liens/Bus"},
+            {"from": "dock", "to": "fenetre", "message": "ouvre ou ferme la fenêtre correspondante"},
+        ],
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
