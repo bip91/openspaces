@@ -89,6 +89,19 @@ DECISIONS = [
             "les objets, les espaces, et les sous-menus (ex. « Classer dans… »)."
         ),
     },
+    {
+        "name": "Barre latérale = contexte, barre du bas = verbes",
+        "justification": (
+            "Objets/Liens/Bus ne sont ni un contexte (espace) ni un verbe sur un "
+            "objet : ce sont des outils système (catalogues globaux). Déplacés en "
+            "bas de la barre latérale (avec un Paramètres à venir), pas dans le "
+            "dock de la barre du bas. Historique n'est dans aucune des deux "
+            "listes : pas une destination fixe, il s'ouvre tout seul quand une "
+            "commande l'invoque sur un objet précis, se ferme avec son propre "
+            "bouton. Barre du bas = prompt seul pour l'instant, futurs widgets "
+            "d'info/action ponctuels, pas les outils système lourds."
+        ),
+    },
 ]
 
 # Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
