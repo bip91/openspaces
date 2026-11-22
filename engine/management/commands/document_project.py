@@ -119,6 +119,26 @@ PROTOTYPES = [
             {"from": "dock", "to": "fenetre", "message": "ouvre ou ferme la fenêtre correspondante"},
         ],
     },
+    {
+        "name": "Prototype — fusion bande d'espaces + fenêtrage",
+        "persona": "architecte produit",
+        "description": (
+            "prototypes/desktop (Svelte + Vite), jetable, données bidon, pas "
+            "branché sur le vrai moteur. Fusionne les deux prototypes "
+            "précédents plutôt que d'en ajouter un : voir les gestes "
+            "ensemble, pas isolés. Le contenu de la fenêtre Objets dépend de "
+            "l'espace actif ; glisser une carte depuis cette fenêtre sur une "
+            "bulle d'espace la déplace, dans le même écran que le fenêtrage "
+            "accrochable (4 coins)."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "bande", "message": "change d'espace actif"},
+            {"from": "fenetre-objets", "to": "bande", "message": "montre les objets de cet espace"},
+            {"from": "utilisateur", "to": "carte-objet", "message": "glisse depuis la fenêtre Objets"},
+            {"from": "carte-objet", "to": "bande", "message": "dépose sur une autre bulle"},
+            {"from": "utilisateur", "to": "fenetre", "message": "déplace/redimensionne/accroche"},
+        ],
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
