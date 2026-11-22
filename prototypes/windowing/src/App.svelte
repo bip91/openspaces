@@ -45,18 +45,24 @@
   let drag = null; // { id, startX, startY, originX, originY }
   let resize = null; // { id, startX, startY, originW, originH }
   let desktopEl;
-  let activeZone = null; // null | "left" | "right" | "maximize" | "top-left" | "top-right"
+  let activeZone = null; // null | "left" | "right" | "maximize" | "top-left" | "top-right" | "bottom-left" | "bottom-right"
 
   const EDGE = 28;
+  const CORNER = 64; // zone de coin plus généreuse que le bord simple — plus facile à viser
 
   function computeZone(clientX, clientY, rect) {
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-    if (y < EDGE) {
-      if (x < rect.width * 0.33) return "top-left";
-      if (x > rect.width * 0.67) return "top-right";
-      return "maximize";
-    }
+    const nearTop = y < CORNER;
+    const nearBottom = y > rect.height - CORNER;
+    const nearLeft = x < CORNER;
+    const nearRight = x > rect.width - CORNER;
+
+    if (nearTop && nearLeft) return "top-left";
+    if (nearTop && nearRight) return "top-right";
+    if (nearBottom && nearLeft) return "bottom-left";
+    if (nearBottom && nearRight) return "bottom-right";
+    if (y < EDGE) return "maximize";
     if (x < EDGE) return "left";
     if (x > rect.width - EDGE) return "right";
     return null;
@@ -74,6 +80,10 @@
         return { x: 0, y: 0, width: w / 2, height: h / 2 };
       case "top-right":
         return { x: w / 2, y: 0, width: w / 2, height: h / 2 };
+      case "bottom-left":
+        return { x: 0, y: h / 2, width: w / 2, height: h / 2 };
+      case "bottom-right":
+        return { x: w / 2, y: h / 2, width: w / 2, height: h / 2 };
       default:
         return null;
     }
