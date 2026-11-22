@@ -25,6 +25,22 @@
     node.focus();
   }
 
+  // Le menu s'ouvre en bas-gauche du point de clic par défaut (left:x,
+  // top:y) ; près d'un bord de l'écran (ex. Système, tout en bas de la
+  // barre latérale), ça le ferait dépasser — on bascule vers le bord
+  // opposé une fois la taille réelle connue (après montage).
+  function keepInViewport(node) {
+    const rect = node.getBoundingClientRect();
+    if (rect.bottom > window.innerHeight) {
+      node.style.top = "auto";
+      node.style.bottom = `${Math.max(8, window.innerHeight - y)}px`;
+    }
+    if (rect.right > window.innerWidth) {
+      node.style.left = "auto";
+      node.style.right = `${Math.max(8, window.innerWidth - x)}px`;
+    }
+  }
+
   function choose(command) {
     onChoose(command);
   }
@@ -49,7 +65,13 @@
   on:click={onClose}
   on:keydown={(e) => e.key === "Escape" && onClose()}
 >
-  <div class="menu" style="left:{x}px; top:{y}px" on:click|stopPropagation on:keydown|stopPropagation>
+  <div
+    class="menu"
+    style="left:{x}px; top:{y}px"
+    use:keepInViewport
+    on:click|stopPropagation
+    on:keydown|stopPropagation
+  >
     {#if title}<div class="menu-title">{title}</div>{/if}
     <input
       type="text"

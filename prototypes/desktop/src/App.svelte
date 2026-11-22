@@ -359,19 +359,22 @@
           <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
         {/each}
       </div>
-
-      <!-- Système : pas un espace de travail, juste un espace de plus dans
-      la liste — ses fonctions (Objets, Liens, Bus, Paramètres) passent par
-      le même menu clic-droit que n'importe quel autre espace. -->
-      <button
-        class="space-icon system-icon"
-        title="Système"
-        on:click={(e) => openSpaceMenu(e, SYSTEM_SPACE)}
-        on:contextmenu={(e) => openSpaceMenu(e, SYSTEM_SPACE)}
-      >
-        <Cpu size={16} />
-      </button>
     </div>
+
+    <div class="strip-spacer"></div>
+
+    <!-- Système : pas un espace de travail, juste un espace de plus dans la
+    liste, en bas plutôt qu'à la suite des espaces de travail — ses fonctions
+    (Objets, Liens, Bus, Paramètres) passent par le même menu que n'importe
+    quel autre espace. Un seul clic suffit : pas de sélection concurrente à
+    départager comme pour un vrai espace. -->
+    <button
+      class="space-icon system-icon"
+      title="Système"
+      on:click={(e) => openSpaceMenu(e, SYSTEM_SPACE)}
+    >
+      <Cpu size={16} />
+    </button>
   </nav>
 
   <main>
@@ -518,13 +521,14 @@
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 40%, transparent);
   }
 
+  .strip-spacer {
+    flex: 1;
+  }
+
   .system-icon {
     border-radius: 6px;
     border: 1px solid #ccc;
     color: #666;
-    margin-top: 0.4rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid #eee;
     display: flex;
     align-items: center;
     justify-content: center;
