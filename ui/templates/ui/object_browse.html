@@ -41,12 +41,14 @@
 </div>
 
 <div class="column content-column">
-  {# content_url pointe toujours vers ce qui est effectivement affiché — soit
+  {% comment %}
+  content_url pointe toujours vers ce qui est effectivement affiché — soit
   la liste par défaut (depuis object_browse), soit le contenu/l'aperçu déjà
   rendu ci-dessous (depuis object_content/object_preview, visités
   directement : retour/suivant du navigateur, rechargement, nouvel onglet).
   Sans initial_body, chargement différé (hx-trigger=load) ; avec, déjà là,
-  pas de rechargement redondant. #}
+  pas de rechargement redondant.
+  {% endcomment %}
   <div id="browse-content"
        hx-get="{{ content_url }}"
        {% if not initial_body %}hx-trigger="load"{% endif %}
