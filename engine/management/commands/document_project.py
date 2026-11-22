@@ -139,6 +139,24 @@ PROTOTYPES = [
             {"from": "utilisateur", "to": "fenetre", "message": "déplace/redimensionne/accroche"},
         ],
     },
+    {
+        "name": "Prototype — menu radial des verbes",
+        "persona": "architecte produit",
+        "description": (
+            "Ajouté au prototype fusionné (prototypes/desktop), pas un "
+            "nouveau projet — le geste s'exerce naturellement sur les objets "
+            "déjà présents. Sept verbes universels (Voir, Modifier, Lier, "
+            "Classer, Typer, Décider, Historique) — la taille où un radial "
+            "reste lisible (spec : « sept ou huit »). Pas de « créer » : on "
+            "agit sur un objet déjà là, pas sur du vide."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "carte-objet", "message": "clic droit"},
+            {"from": "carte-objet", "to": "menu-radial", "message": "ouvre centré sur le curseur"},
+            {"from": "utilisateur", "to": "tranche", "message": "clique un verbe, ou Échap pour annuler"},
+            {"from": "menu-radial", "to": "toast", "message": "confirme l'action choisie"},
+        ],
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
