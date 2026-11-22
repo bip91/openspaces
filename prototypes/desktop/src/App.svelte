@@ -18,7 +18,7 @@
   // fonctions passent par le même menu clic-droit que les autres, plutôt
   // qu'une section d'icônes à part codée en dur.
   const SYSTEM_SPACE = { id: "system", name: "Système" };
-  const SYSTEM_COMMANDS = ["Objets", "Liens", "Bus", "Paramètres"];
+  const SYSTEM_COMMANDS = ["Objets", "Liens", "Bus", "Fichiers", "Paramètres"];
 
   let activeSpaceId = "demo";
   let dragOverSpaceId = null;
@@ -47,6 +47,76 @@
   let dragOverDossierId = null;
   let viewedDossierId = null;
   $: dossierContents = objects.filter((o) => o.dossierIds.includes(viewedDossierId));
+
+  // --- Gestionnaire de fichiers : double panneau à diviseur interne, à la
+  // Norton/Total Commander — pas deux fenêtres indépendantes qui pourraient
+  // se désassortir (déplacées/fermées séparément), un seul outil. Chaque
+  // panneau montre soit tous les objets de l'espace actif (dossierId null),
+  // soit le contenu d'un dossier choisi dans son en-tête.
+  let fmLeft = { dossierId: null };
+  let fmRight = { dossierId: null };
+  let fmActivePane = "left";
+  let fmSplit = 0.5;
+  let fmPanelEl;
+  let fmDividerDrag = null;
+
+  function fmPaneObjects(pane) {
+    return activeObjects.filter((o) => pane.dossierId == null || o.dossierIds.includes(pane.dossierId));
+  }
+  $: fmLeftObjects = fmPaneObjects(fmLeft);
+  $: fmRightObjects = fmPaneObjects(fmRight);
+
+  function fmPaneLabel(pane) {
+    if (pane.dossierId == null) return "Tous les objets";
+    return dossiers.find((d) => d.id === pane.dossierId)?.name ?? "Tous les objets";
+  }
+
+  function openFmPaneMenu(event, side) {
+    event.preventDefault();
+    const { clientX: x, clientY: y } = event;
+    const spaceDossiers = dossiers.filter((d) => d.spaceId === activeSpaceId);
+    commandMenu = {
+      x,
+      y,
+      title: side === "left" ? "Panneau gauche" : "Panneau droit",
+      commands: ["Tous les objets", ...spaceDossiers.map((d) => d.name)],
+      onChoose: (cmd) => {
+        closeCommandMenu();
+        const dossierId = cmd === "Tous les objets" ? null : spaceDossiers.find((d) => d.name === cmd)?.id ?? null;
+        if (side === "left") fmLeft = { dossierId };
+        else fmRight = { dossierId };
+      },
+    };
+  }
+
+  function fmDrop(event, side) {
+    event.preventDefault();
+    const objectId = Number(event.dataTransfer.getData("text/plain"));
+    const pane = side === "left" ? fmLeft : fmRight;
+    if (pane.dossierId == null) return;
+    const object = objects.find((o) => o.id === objectId);
+    classifyObject(objectId, pane.dossierId);
+    if (object) flashAction(`Classé « ${object.name} » → « ${fmPaneLabel(pane)} »`);
+  }
+
+  function fmDividerPointerDown(event) {
+    event.stopPropagation();
+    fmDividerDrag = true;
+    window.addEventListener("pointermove", fmDividerMove);
+    window.addEventListener("pointerup", fmDividerUp);
+  }
+
+  function fmDividerMove(event) {
+    if (!fmDividerDrag || !fmPanelEl) return;
+    const rect = fmPanelEl.getBoundingClientRect();
+    fmSplit = Math.min(0.8, Math.max(0.2, (event.clientX - rect.left) / rect.width));
+  }
+
+  function fmDividerUp() {
+    fmDividerDrag = null;
+    window.removeEventListener("pointermove", fmDividerMove);
+    window.removeEventListener("pointerup", fmDividerUp);
+  }
 
   let lastAction = "";
   let toastTimer;
@@ -133,8 +203,9 @@
 
   function handleSpaceCommand(cmd, space) {
     closeCommandMenu();
-    if (cmd === "Objets" || cmd === "Liens" || cmd === "Bus") {
-      openWindow(cmd === "Objets" ? "objets" : cmd === "Liens" ? "liens" : "bus");
+    if (cmd === "Objets" || cmd === "Liens" || cmd === "Bus" || cmd === "Fichiers") {
+      const ids = { Objets: "objets", Liens: "liens", Bus: "bus", Fichiers: "fichiers" };
+      openWindow(ids[cmd]);
       return;
     }
     if (cmd === "Paramètres") {
@@ -247,10 +318,26 @@
     if (object) flashAction(`Classé « ${object.name} » → « ${dossier.name} »`);
   }
 
+  // « ? » = prompt IA (mode par défaut, même sans le taper — la barre du bas
+  // n'a pas d'autre usage) ; « ! » = commande directe (type cp/ren), même
+  // distinction que CommandMenu, portée ici où elle sert vraiment : lancer
+  // une commande plutôt que poser une question. La réponse s'affiche juste
+  // au-dessus de la barre dans les deux cas — un seul espace de retour.
   function submitPrompt() {
-    const text = promptText.trim().toLowerCase();
-    if (!text) return;
-    if (text.includes("exigence") || text.includes("extrai")) {
+    const raw = promptText.trim();
+    if (!raw) return;
+    if (raw.startsWith("!")) {
+      const command = raw.slice(1).trim();
+      promptResponse = command
+        ? `→ « ${command} » exécutée (simulation).`
+        : "Tape une commande après le « ! ».";
+      promptText = "";
+      return;
+    }
+    const text = (raw.startsWith("?") ? raw.slice(1) : raw).trim().toLowerCase();
+    if (!text) {
+      promptResponse = "Pose une question, ou « ! » pour une commande directe.";
+    } else if (text.includes("exigence") || text.includes("extrai")) {
       promptResponse = "2 exigences extraites (simulation) — voir la fenêtre Objets.";
     } else if (text.includes("lien")) {
       promptResponse = "1 lien proposé vers « commande » (simulation).";
@@ -286,6 +373,7 @@
     { id: "bus", title: "Bus", x: 300, y: 330, width: 380, height: 190, z: nextZ++, open: false },
     { id: "historique", title: "Historique", x: 560, y: 340, width: 320, height: 180, z: nextZ++, open: false },
     { id: "dossier", title: "Dossier", x: 180, y: 160, width: 320, height: 240, z: nextZ++, open: false },
+    { id: "fichiers", title: "Gestionnaire de fichiers", x: 90, y: 70, width: 640, height: 380, z: nextZ++, open: false },
   ];
 
   function selectSpace(id) {
@@ -487,6 +575,34 @@
     </button>
   </nav>
 
+  {#snippet fmPane(side, pane, paneObjects)}
+    <div
+      class="fm-pane"
+      class:active={fmActivePane === side}
+      on:pointerdown={() => (fmActivePane = side)}
+      on:dragover={(e) => e.preventDefault()}
+      on:drop={(e) => fmDrop(e, side)}
+    >
+      <button class="fm-pane-header" on:click={(e) => openFmPaneMenu(e, side)}>
+        {fmPaneLabel(pane)} ▾
+      </button>
+      <div class="fm-pane-list">
+        {#each paneObjects as object (object.id)}
+          <div
+            class="object-card"
+            draggable="true"
+            on:dragstart={(e) => onObjectDragStart(e, object.id)}
+            on:contextmenu={(e) => openObjectMenu(e, object)}
+          >
+            {object.name}
+          </div>
+        {:else}
+          <p class="empty">Vide.</p>
+        {/each}
+      </div>
+    </div>
+  {/snippet}
+
   <main>
     <div class="desktop" bind:this={desktopEl}>
       {#if activeZone}
@@ -507,7 +623,7 @@
             <span>{win.title}</span>
             <button class="close" on:click={() => toggleWindow(win.id)} aria-label="Fermer">×</button>
           </header>
-          <div class="body">
+          <div class="body" class:fm-body={win.id === "fichiers"}>
             {#if win.id === "objets"}
               <p class="hint">
                 Glisse une carte sur une bulle d'espace pour la déplacer. Clic
@@ -546,6 +662,21 @@
               {:else}
                 <p class="empty">Ce dossier est vide.</p>
               {/each}
+            {:else if win.id === "fichiers"}
+              <div class="fm-panel" bind:this={fmPanelEl}>
+                <div class="fm-pane-wrap" style="flex-basis: {fmSplit * 100}%">
+                  {@render fmPane("left", fmLeft, fmLeftObjects)}
+                </div>
+                <div
+                  class="fm-divider"
+                  role="separator"
+                  aria-orientation="vertical"
+                  on:pointerdown={fmDividerPointerDown}
+                ></div>
+                <div class="fm-pane-wrap" style="flex-basis: {(1 - fmSplit) * 100}%">
+                  {@render fmPane("right", fmRight, fmRightObjects)}
+                </div>
+              </div>
             {:else}
               {#each busLines as line}<p>{line}</p>{/each}
             {/if}
@@ -569,7 +700,7 @@
         <form class="promptbar" on:submit|preventDefault={submitPrompt}>
           <input
             type="text"
-            placeholder="Demande quelque chose (ex. « extraire les exigences », « ouvrir l'historique »)…"
+            placeholder="? une question (ex. « extraire les exigences »), ou ! une commande (ex. « ! cp commande classeur-démo »)…"
             bind:value={promptText}
           />
           <button type="submit">Envoyer</button>
@@ -776,6 +907,67 @@
   }
   .empty {
     color: #aaa;
+  }
+
+  .body.fm-body {
+    padding: 0;
+    gap: 0;
+  }
+
+  .fm-panel {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .fm-pane-wrap {
+    min-width: 0;
+    display: flex;
+  }
+
+  .fm-divider {
+    width: 6px;
+    flex: 0 0 6px;
+    cursor: col-resize;
+    background: #e5e7eb;
+  }
+  .fm-divider:hover {
+    background: #c7d2fe;
+  }
+
+  .fm-pane {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid transparent;
+  }
+  .fm-pane.active {
+    background: #f8faff;
+  }
+
+  .fm-pane-header {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border: none;
+    border-bottom: 1px solid #eee;
+    background: #f3f4f6;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+  }
+  .fm-pane-header:hover {
+    background: #eef2ff;
+  }
+
+  .fm-pane-list {
+    flex: 1;
+    overflow: auto;
+    padding: 0.5rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
   }
 
   .object-card {
