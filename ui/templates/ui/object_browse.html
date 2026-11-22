@@ -1,61 +1,50 @@
 {% extends "ui/base.html" %}
+{% load static %}
+
+{% block extra_head %}
+  <script src="{% static 'ui/vendor/mermaid.min.js' %}"></script>
+  <script>
+    if (window.mermaid) { mermaid.initialize({ startOnLoad: false }); }
+  </script>
+{% endblock %}
 
 {% block content %}
-<div class="column">
+<div class="column tree-column">
   <a class="back" href="{% url 'workspace' %}">← retour</a>
   <h1>Objets</h1>
-  <form method="get">
-    <select name="type">
+
+  <form method="get" class="type-filter">
+    <select name="type" onchange="this.form.submit()">
       <option value="">tous les types</option>
       {% for t in types %}
         <option value="{{ t.id }}" {% if selected_type == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
       {% endfor %}
     </select>
-    <select name="dossier">
-      <option value="">tous les dossiers</option>
-      {% for d in dossiers %}
-        <option value="{{ d.id }}" {% if selected_dossier == d.id|stringformat:"s" %}selected{% endif %}>{% if d.depth %}— {% endif %}{{ d.current_version.attributes.name }}</option>
-      {% endfor %}
-    </select>
-    <button type="submit">filtrer</button>
+    <input type="hidden" name="dossier" value="{{ selected_dossier }}">
   </form>
-  <table class="browse">
-    <thead>
-      <tr><th>nom</th><th>type</th><th>version</th><th>créé le</th></tr>
-    </thead>
-    <tbody>
-      {% for object in objects %}
-        <tr>
-          <td><a href="{% url 'object-detail' object.id %}">{{ object.current_version.attributes.name|default:"(sans nom)" }}</a></td>
-          <td class="muted">{{ object.base_type.name }}</td>
-          <td class="muted">v{{ object.current_version.number }}</td>
-          <td class="muted">{{ object.created_at|date:"d/m/Y H:i" }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="4" class="muted">Aucun objet.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+  <h2>Dossiers</h2>
+  <ul class="dossier-tree">
+    <li class="dossier-node">
+      <a class="dossier-link {% if not selected_dossier %}active{% endif %}"
+         href="{% url 'object-browse' %}?type={{ selected_type }}"
+         hx-get="{% url 'object-content' %}?type={{ selected_type }}"
+         hx-target="#browse-content" hx-swap="innerHTML"
+         hx-push-url="{% url 'object-browse' %}?type={{ selected_type }}">
+        🗂 Tous les objets
+      </a>
+    </li>
+    {% for dossier in dossiers %}
+      {% include "ui/_dossier_node.html" with dossier=dossier selected_dossier=selected_dossier selected_type=selected_type %}
+    {% endfor %}
+  </ul>
 </div>
-<div class="column">
-  <h1>Liens</h1>
-  <table class="browse">
-    <thead>
-      <tr><th>source</th><th>nature</th><th>cible</th><th>calque</th><th>statut</th></tr>
-    </thead>
-    <tbody>
-      {% for link in links %}
-        <tr>
-          <td><a href="{% url 'object-detail' link.source_id %}">{{ link.source.current_version.attributes.name|default:link.source_id }}</a></td>
-          <td class="muted">{{ link.nature }}</td>
-          <td><a href="{% url 'object-detail' link.target_id %}">{{ link.target.current_version.attributes.name|default:link.target_id }}</a></td>
-          <td class="muted">{{ link.layer.role|default:"—" }}</td>
-          <td class="muted">{{ link.status }}</td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="5" class="muted">Aucun lien.</td></tr>
-      {% endfor %}
-    </tbody>
-  </table>
+
+<div class="column content-column">
+  <div id="browse-content"
+       hx-get="{% url 'object-content' %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+       hx-trigger="load" hx-swap="innerHTML">
+    Chargement…
+  </div>
 </div>
 {% endblock %}

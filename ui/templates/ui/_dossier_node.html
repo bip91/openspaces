@@ -1,0 +1,22 @@
+<li class="dossier-node">
+  <a class="dossier-link {% if selected_dossier == dossier.id|stringformat:"s" %}active{% endif %}"
+     href="{% url 'object-browse' %}?type={{ selected_type }}&dossier={{ dossier.id }}"
+     hx-get="{% url 'object-content' %}?type={{ selected_type }}&dossier={{ dossier.id }}"
+     hx-target="#browse-content" hx-swap="innerHTML"
+     hx-push-url="{% url 'object-browse' %}?type={{ selected_type }}&dossier={{ dossier.id }}">
+    {% if dossier.is_dynamic %}🔎{% else %}📁{% endif %} {{ dossier.current_version.attributes.name }}
+  </a>
+  {% if dossier.children %}
+    {# Fermé par défaut — <details> natif, pas de JS : le dépliage est une
+       action séparée du clic sur le nom (qui sélectionne le dossier),
+       comme dans Explorer/Nemo (flèche vs clic sur la ligne). #}
+    <details>
+      <summary>{{ dossier.children|length }} sous-dossier{{ dossier.children|length|pluralize }}</summary>
+      <ul class="dossier-tree">
+        {% for child in dossier.children %}
+          {% include "ui/_dossier_node.html" with dossier=child selected_dossier=selected_dossier selected_type=selected_type %}
+        {% endfor %}
+      </ul>
+    </details>
+  {% endif %}
+</li>

@@ -48,18 +48,18 @@ def test_object_browse_nests_child_dossiers_under_their_parent_for_display(
     link_objects("sous-dossier-de", child, parent, author=demo_user)
 
     response = client.get(reverse("object-browse"))
-    dossier_section = response.content.split(b'name="dossier"')[1].split(b"</select>")[0]
+    tree_section = response.content.split(b"<h2>Dossiers</h2>")[1].split(b"content-column")[0]
 
-    # L'enfant apparaît juste après son parent, indenté — mais n'importe plus
-    # (même sémantique) en dehors de ça : la hiérarchie ne change rien à
-    # l'appartenance, juste à l'ordre d'affichage.
-    assert dossier_section.index(b"Vues") < dossier_section.index(b"\xe2\x80\x94 Enfant")
+    # L'enfant apparaît sous son parent, dans le même sous-arbre — mais
+    # n'importe plus (même sémantique) en dehors de ça : la hiérarchie ne
+    # change rien à l'appartenance, juste à l'ordre d'affichage.
+    assert tree_section.index(b"Vues") < tree_section.index(b"Enfant")
 
 
 def test_object_browse_filters_by_type(client, demo_context, demo_commande, demo_table_type):
     client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
 
-    response = client.get(reverse("object-browse"), {"type": str(demo_table_type.id)})
+    response = client.get(reverse("object-content"), {"type": str(demo_table_type.id)})
 
     assert b"commande" in response.content
     assert b"a.md" not in response.content
@@ -72,7 +72,7 @@ def test_object_browse_filters_by_dossier(client, demo_context, demo_commande, d
     client.post(reverse("link-object", args=[demo_commande.id]), {"target": folder.id, "nature": "classification"})
     create_object(space, demo_commande.base_type, {"name": "hors-dossier"}, author=demo_user)
 
-    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+    response = client.get(reverse("object-content"), {"dossier": str(folder.id)})
 
     assert b"commande" in response.content
     assert b"hors-dossier" not in response.content
@@ -96,7 +96,7 @@ def test_object_browse_dynamic_dossier_filters_by_query_and_updates_both_ways(
         author=demo_user,
     )
 
-    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+    response = client.get(reverse("object-content"), {"dossier": str(folder.id)})
     assert b"exigence-agent" in response.content
     assert b"commande" not in response.content
 
@@ -104,7 +104,7 @@ def test_object_browse_dynamic_dossier_filters_by_query_and_updates_both_ways(
     # dynamique sans aucun changement de Link.
     update_object(agent_made.id, agent_made.current_version.number, agent_made.current_version.attributes, author=demo_user)
 
-    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+    response = client.get(reverse("object-content"), {"dossier": str(folder.id)})
     assert b"exigence-agent" not in response.content
 
 
@@ -129,11 +129,10 @@ def test_object_browse_dynamic_dossier_exclude_handles_absence(
         author=demo_user,
     )
 
-    response = client.get(reverse("object-browse"), {"dossier": str(dynamic_folder.id)})
-    objects_section = response.content.split(b"<h1>Liens</h1>")[0]
+    response = client.get(reverse("object-content"), {"dossier": str(dynamic_folder.id)})
 
-    assert b"table-non-classee" in objects_section
-    assert b"commande" not in objects_section
+    assert b"table-non-classee" in response.content
+    assert b"commande" not in response.content
 
 
 def test_object_browse_lists_objects_and_links(client, demo_context):
@@ -143,12 +142,14 @@ def test_object_browse_lists_objects_and_links(client, demo_context):
     target = Object.objects.get(current_version__attributes__name="b.md")
     client.post(reverse("link-object", args=[source.id]), {"target": target.id, "nature": "correspondence"})
 
-    response = client.get(reverse("object-browse"))
+    content_response = client.get(reverse("object-content"))
+    assert content_response.status_code == 200
+    assert b"a.md" in content_response.content
+    assert b"b.md" in content_response.content
 
-    assert response.status_code == 200
-    assert b"a.md" in response.content
-    assert b"b.md" in response.content
-    assert b"correspondence" in response.content
+    # Les liens se voient depuis l'objet (aperçu), pas dans une liste à part.
+    preview_response = client.get(reverse("object-preview", args=[source.id]))
+    assert b"correspondence" in preview_response.content
 
 
 def test_object_detail_shows_the_three_views(client, demo_context, demo_commande):

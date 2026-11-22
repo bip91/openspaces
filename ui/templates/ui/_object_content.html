@@ -1,0 +1,25 @@
+{% if message %}<p class="confirm">{{ message }}</p>{% endif %}
+<p class="muted">{% if dossier_name %}Dossier : {{ dossier_name }}{% else %}Tous les objets{% endif %}</p>
+<table class="browse">
+  <thead>
+    <tr><th>nom</th><th>type</th><th>version</th></tr>
+  </thead>
+  <tbody>
+    {% for object in objects %}
+      <tr>
+        <td>
+          <a href="{% url 'object-preview' object.id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+             hx-get="{% url 'object-preview' object.id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+             hx-target="#browse-content" hx-swap="innerHTML"
+             hx-push-url="{% url 'object-preview' object.id %}?type={{ selected_type }}&dossier={{ selected_dossier }}">
+            {{ object.current_version.attributes.name|default:"(sans nom)" }}
+          </a>
+        </td>
+        <td class="muted">{{ object.base_type.name }}</td>
+        <td class="muted">v{{ object.current_version.number }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="3" class="muted">Aucun objet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
