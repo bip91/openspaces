@@ -44,11 +44,12 @@
   }
 
   function chooseVerb(verb) {
-    lastAction = `${verb} — ${radialMenu.objectName}`;
+    const { objectName, x, y } = radialMenu;
+    lastAction = `${verb} — ${objectName}`;
     closeRadialMenu();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (lastAction = ""), 2200);
-    if (verb === "Historique") openHistoryWindow();
+    if (verb === "Historique") openHistoryWindow(objectName, x, y);
   }
   let toastTimer;
 
@@ -60,8 +61,18 @@
   let promptText = "";
   let promptResponse = "";
 
-  function openHistoryWindow() {
-    windows = windows.map((w) => (w.id === "historique" ? { ...w, open: true } : w));
+  function openHistoryWindow(objectName, atX, atY) {
+    windows = windows.map((w) =>
+      w.id === "historique"
+        ? {
+            ...w,
+            title: objectName ? `Historique — ${objectName}` : "Historique",
+            x: atX != null ? atX - w.width / 2 : w.x,
+            y: atY != null ? atY + 16 : w.y,
+            open: true,
+          }
+        : w
+    );
     bringToFront("historique");
   }
 
@@ -320,22 +331,24 @@
     </div>
 
     <div class="bottombar">
-      <form class="promptbar" on:submit|preventDefault={submitPrompt}>
-        <input
-          type="text"
-          placeholder="Demande quelque chose (ex. « extraire les exigences », « ouvrir l'historique »)…"
-          bind:value={promptText}
-        />
-        <button type="submit">Envoyer</button>
-      </form>
       {#if promptResponse}
         <p class="prompt-response">{promptResponse}</p>
       {/if}
-      <nav class="dock" aria-label="Fenêtres">
-        {#each windows as win (win.id)}
-          <button class:open={win.open} on:click={() => toggleWindow(win.id)}>{win.title}</button>
-        {/each}
-      </nav>
+      <div class="bar">
+        <form class="promptbar" on:submit|preventDefault={submitPrompt}>
+          <input
+            type="text"
+            placeholder="Demande quelque chose (ex. « extraire les exigences », « ouvrir l'historique »)…"
+            bind:value={promptText}
+          />
+          <button type="submit">Envoyer</button>
+        </form>
+        <nav class="dock" aria-label="Fenêtres">
+          {#each windows as win (win.id)}
+            <button class:open={win.open} on:click={() => toggleWindow(win.id)}>{win.title}</button>
+          {/each}
+        </nav>
+      </div>
     </div>
   </main>
 </div>
@@ -520,10 +533,17 @@
     border-top: 1px solid #ddd;
   }
 
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem;
+  }
+
   .promptbar {
     display: flex;
     gap: 0.5rem;
-    padding: 0.6rem 0.6rem 0;
+    flex: 1;
   }
   .promptbar input {
     flex: 1;
@@ -551,8 +571,6 @@
   .dock {
     display: flex;
     gap: 0.5rem;
-    justify-content: center;
-    padding: 0.6rem;
   }
   .dock button {
     padding: 0.4rem 0.9rem;
