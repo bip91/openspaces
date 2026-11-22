@@ -23,12 +23,14 @@
   let activeSpaceId = "demo";
   let dragOverSpaceId = null;
 
+  // dossierIds : multi-valué, comme le vrai Dossier (Link de classification,
+  // pas un champ unique) — un objet peut être classé dans plusieurs dossiers.
   let objects = [
-    { id: 1, name: "commande", spaceId: "demo" },
-    { id: 2, name: "délai obligatoire", spaceId: "demo" },
-    { id: 3, name: "cas-usage-directeur", spaceId: "demo" },
-    { id: 4, name: "devis-acme-03", spaceId: "acme" },
-    { id: 5, name: "contrat-lumen", spaceId: "lumen" },
+    { id: 1, name: "commande", spaceId: "demo", dossierIds: [2] },
+    { id: 2, name: "délai obligatoire", spaceId: "demo", dossierIds: [] },
+    { id: 3, name: "cas-usage-directeur", spaceId: "demo", dossierIds: [] },
+    { id: 4, name: "devis-acme-03", spaceId: "acme", dossierIds: [] },
+    { id: 5, name: "contrat-lumen", spaceId: "lumen", dossierIds: [1] },
   ];
 
   $: activeObjects = objects.filter((o) => o.spaceId === activeSpaceId);
@@ -41,6 +43,10 @@
     { id: 2, name: "Exigences", spaceId: "demo" },
   ];
   $: pinnedDossiers = dossiers.filter((d) => d.spaceId === activeSpaceId);
+
+  let dragOverDossierId = null;
+  let viewedDossierId = null;
+  $: dossierContents = objects.filter((o) => o.dossierIds.includes(viewedDossierId));
 
   let lastAction = "";
   let toastTimer;
@@ -60,42 +66,53 @@
 
   const OBJECT_COMMANDS = ["Voir", "Modifier", "Lier", "Classer", "Typer", "Décider", "Historique"];
 
-  function openObjectMenu(event, objectName) {
+  function openObjectMenu(event, object) {
     event.preventDefault();
     const { clientX: x, clientY: y } = event;
     commandMenu = {
       x,
       y,
-      title: objectName,
+      title: object.name,
       commands: OBJECT_COMMANDS,
-      onChoose: (cmd) => handleObjectCommand(cmd, objectName, x, y),
+      onChoose: (cmd) => handleObjectCommand(cmd, object, x, y),
     };
   }
 
-  function handleObjectCommand(cmd, objectName, x, y) {
+  function handleObjectCommand(cmd, object, x, y) {
     if (cmd === "Historique") {
       closeCommandMenu();
-      openHistoryWindow(objectName, x, y);
+      openHistoryWindow(object.name, x, y);
       return;
     }
     if (cmd === "Classer") {
-      openClasserMenu(objectName, x, y);
+      openClasserMenu(object, x, y);
       return;
     }
     closeCommandMenu();
-    flashAction(`${cmd} — ${objectName}`);
+    flashAction(`${cmd} — ${object.name}`);
   }
 
-  function openClasserMenu(objectName, x, y) {
-    const names = dossiers.filter((d) => d.spaceId === activeSpaceId).map((d) => d.name);
+  function classifyObject(objectId, dossierId) {
+    objects = objects.map((o) =>
+      o.id === objectId && !o.dossierIds.includes(dossierId)
+        ? { ...o, dossierIds: [...o.dossierIds, dossierId] }
+        : o
+    );
+  }
+
+  function openClasserMenu(object, x, y) {
+    const spaceDossiers = dossiers.filter((d) => d.spaceId === activeSpaceId);
     commandMenu = {
       x,
       y,
-      title: `Classer « ${objectName} » dans…`,
-      commands: names.length ? names : ["(aucun dossier dans cet espace)"],
+      title: `Classer « ${object.name} » dans…`,
+      commands: spaceDossiers.length ? spaceDossiers.map((d) => d.name) : ["(aucun dossier dans cet espace)"],
       onChoose: (dossierName) => {
         closeCommandMenu();
-        flashAction(`Classé « ${objectName} » → « ${dossierName} »`);
+        const dossier = spaceDossiers.find((d) => d.name === dossierName);
+        if (!dossier) return;
+        classifyObject(object.id, dossier.id);
+        flashAction(`Classé « ${object.name} » → « ${dossier.name} »`);
       },
     };
   }
@@ -117,7 +134,7 @@
   function handleSpaceCommand(cmd, space) {
     closeCommandMenu();
     if (cmd === "Objets" || cmd === "Liens" || cmd === "Bus") {
-      toggleWindow(cmd === "Objets" ? "objets" : cmd === "Liens" ? "liens" : "bus");
+      openWindow(cmd === "Objets" ? "objets" : cmd === "Liens" ? "liens" : "bus");
       return;
     }
     if (cmd === "Paramètres") {
@@ -154,6 +171,44 @@
         : w
     );
     bringToFront("historique");
+  }
+
+  // Ouvre le contenu d'un dossier épinglé — même mécanique que l'historique
+  // (une fenêtre, retitrée/repositionnée dynamiquement), pas une fenêtre par
+  // dossier : un dossier est une vue sur une sélection d'objets, pas un objet
+  // en soi à garder ouvert indéfiniment.
+  function openDossierWindow(dossier, atX, atY) {
+    viewedDossierId = dossier.id;
+    windows = windows.map((w) =>
+      w.id === "dossier"
+        ? {
+            ...w,
+            title: `Dossier — ${dossier.name}`,
+            x: atX != null ? atX - w.width / 2 : w.x,
+            y: atY != null ? atY + 16 : w.y,
+            open: true,
+          }
+        : w
+    );
+    bringToFront("dossier");
+  }
+
+  function onDossierDragOver(event, dossierId) {
+    event.preventDefault();
+    dragOverDossierId = dossierId;
+  }
+
+  function onDossierDragLeave() {
+    dragOverDossierId = null;
+  }
+
+  function onDossierDrop(event, dossier) {
+    event.preventDefault();
+    const objectId = Number(event.dataTransfer.getData("text/plain"));
+    const object = objects.find((o) => o.id === objectId);
+    classifyObject(objectId, dossier.id);
+    dragOverDossierId = null;
+    if (object) flashAction(`Classé « ${object.name} » → « ${dossier.name} »`);
   }
 
   function submitPrompt() {
@@ -194,6 +249,7 @@
     { id: "liens", title: "Liens", x: 500, y: 110, width: 340, height: 200, z: nextZ++, open: true },
     { id: "bus", title: "Bus", x: 300, y: 330, width: 380, height: 190, z: nextZ++, open: false },
     { id: "historique", title: "Historique", x: 560, y: 340, width: 320, height: 180, z: nextZ++, open: false },
+    { id: "dossier", title: "Dossier", x: 180, y: 160, width: 320, height: 240, z: nextZ++, open: false },
   ];
 
   function selectSpace(id) {
@@ -280,6 +336,13 @@
     if (windows.find((w) => w.id === id)?.open) bringToFront(id);
   }
 
+  // Les commandes de menu ouvrent toujours — jamais une bascule qui
+  // refermerait si déjà ouverte. Seule la croix de la fenêtre ferme.
+  function openWindow(id) {
+    windows = windows.map((w) => (w.id === id ? { ...w, open: true } : w));
+    bringToFront(id);
+  }
+
   function onTitlePointerDown(event, win) {
     bringToFront(win.id);
     drag = { id: win.id, startX: event.clientX, startY: event.clientY, originX: win.x, originY: win.y };
@@ -356,7 +419,17 @@
 
       <div class="pinned-dossiers">
         {#each pinnedDossiers as dossier (dossier.id)}
-          <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
+          <button
+            class="dossier-badge"
+            class:drag-over={dossier.id === dragOverDossierId}
+            title={dossier.name}
+            on:click={(e) => openDossierWindow(dossier, e.clientX, e.clientY)}
+            on:dragover={(e) => onDossierDragOver(e, dossier.id)}
+            on:dragleave={onDossierDragLeave}
+            on:drop={(e) => onDossierDrop(e, dossier)}
+          >
+            {dossier.name.slice(0, 1).toUpperCase()}
+          </button>
         {/each}
       </div>
     </div>
@@ -408,7 +481,7 @@
                   class="object-card"
                   draggable="true"
                   on:dragstart={(e) => onObjectDragStart(e, object.id)}
-                  on:contextmenu={(e) => openObjectMenu(e, object.name)}
+                  on:contextmenu={(e) => openObjectMenu(e, object)}
                 >
                   {object.name}
                 </div>
@@ -419,6 +492,23 @@
               {#each linkLines as line}<p>{line}</p>{/each}
             {:else if win.id === "historique"}
               {#each historyLines as line}<p>{line}</p>{/each}
+            {:else if win.id === "dossier"}
+              <p class="hint">
+                Contenu du dossier. Glisse une carte sur un autre dossier ou
+                une bulle d'espace pour la reclasser/déplacer.
+              </p>
+              {#each dossierContents as object (object.id)}
+                <div
+                  class="object-card"
+                  draggable="true"
+                  on:dragstart={(e) => onObjectDragStart(e, object.id)}
+                  on:contextmenu={(e) => openObjectMenu(e, object)}
+                >
+                  {object.name}
+                </div>
+              {:else}
+                <p class="empty">Ce dossier est vide.</p>
+              {/each}
             {:else}
               {#each busLines as line}<p>{line}</p>{/each}
             {/if}
@@ -551,6 +641,7 @@
   .dossier-badge {
     width: 28px;
     height: 28px;
+    padding: 0;
     border-radius: 6px;
     background: #f3f4f6;
     border: 1px solid #ddd;
@@ -560,6 +651,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: transform 0.12s ease, background 0.12s ease;
+  }
+  .dossier-badge:hover {
+    background: #eef2ff;
+  }
+  .dossier-badge.drag-over {
+    transform: scale(1.15);
+    background: #dbeafe;
+    border-color: #2563eb;
   }
 
   main {
