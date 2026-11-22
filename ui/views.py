@@ -126,6 +126,9 @@ def _dossier_tree(space, folder_type):
 
     for root in roots:
         root.children = sorted(children_by_parent_id.get(root.id, []), key=_name)
+        # Un dossier dynamique cache sous un parent fermé par défaut ne se
+        # découvre pas — on déplie d'office un parent qui en contient un.
+        root.has_dynamic_child = any(child.is_dynamic for child in root.children)
     return sorted(roots, key=_name)
 
 

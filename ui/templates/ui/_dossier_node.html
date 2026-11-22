@@ -10,8 +10,10 @@
   {% if dossier.children %}
     {# Fermé par défaut — <details> natif, pas de JS : le dépliage est une
        action séparée du clic sur le nom (qui sélectionne le dossier),
-       comme dans Explorer/Nemo (flèche vs clic sur la ligne). #}
-    <details>
+       comme dans Explorer/Nemo (flèche vs clic sur la ligne). Exception :
+       déplié d'office s'il contient un dossier dynamique, sinon invisible
+       tant qu'on ne sait pas qu'il faut cliquer pour le trouver. #}
+    <details {% if dossier.has_dynamic_child %}open{% endif %}>
       <summary>{{ dossier.children|length }} sous-dossier{{ dossier.children|length|pluralize }}</summary>
       <ul class="dossier-tree">
         {% for child in dossier.children %}
