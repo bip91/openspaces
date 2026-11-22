@@ -71,7 +71,10 @@ def test_object_browse_dynamic_dossier_filters_by_query_and_updates_both_ways(
     assert agent_made.current_version.validated is False  # créé par l'agent, pas encore relu
 
     folder = create_object(
-        space, demo_folder_type, {"name": "dynamique", "query": {"validated": False}}, author=demo_user
+        space,
+        demo_folder_type,
+        {"name": "dynamique", "query": {"filter": {"current_version__validated": False}}},
+        author=demo_user,
     )
 
     response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
@@ -84,6 +87,34 @@ def test_object_browse_dynamic_dossier_filters_by_query_and_updates_both_ways(
 
     response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
     assert b"exigence-agent" not in response.content
+
+
+def test_object_browse_dynamic_dossier_exclude_handles_absence(
+    client, demo_context, demo_commande, demo_table_type, demo_user, demo_folder_type
+):
+    space, layer, document_type = demo_context
+    create_object(space, demo_table_type, {"name": "table-non-classee"}, author=demo_user)
+    classifying_folder = create_object(space, demo_folder_type, {"name": "autre-dossier"}, author=demo_user)
+    client.post(
+        reverse("link-object", args=[demo_commande.id]),
+        {"target": classifying_folder.id, "nature": "classification"},
+    )
+
+    dynamic_folder = create_object(
+        space,
+        demo_folder_type,
+        {
+            "name": "tables-non-classees",
+            "query": {"filter": {"base_type__name": "Table"}, "exclude": {"links_from__nature": "classification"}},
+        },
+        author=demo_user,
+    )
+
+    response = client.get(reverse("object-browse"), {"dossier": str(dynamic_folder.id)})
+    objects_section = response.content.split(b"<h1>Liens</h1>")[0]
+
+    assert b"table-non-classee" in objects_section
+    assert b"commande" not in objects_section
 
 
 def test_object_browse_lists_objects_and_links(client, demo_context):

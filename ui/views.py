@@ -102,11 +102,15 @@ def object_browse(request):
         dossier_object = Object.objects.filter(pk=selected_dossier).select_related("current_version").first()
         query = dossier_object.current_version.attributes.get("query") if dossier_object else None
         if query:
-            # Dossier dynamique : l'appartenance est calculée (égalité sur des
-            # champs de Version), pas posée par un Link — « déplacer » un objet
-            # hors de ce dossier revient alors à changer l'attribut concerné
-            # (ex. update_object valide une Version, donc validated devient True).
-            objects = objects.filter(**{f"current_version__{field}": value for field, value in query.items()})
+            # Dossier dynamique : l'appartenance est calculée, pas posée par un Link.
+            # Convention reprise de Django, pas inventée : `filter`/`exclude`, chemins
+            # ORM classiques en clé (ex. "current_version__validated",
+            # "links_from__nature") — couvre aussi bien l'égalité que l'absence
+            # (un Table « non classée » = exclude sur un Link de classification).
+            # « Déplacer » un objet hors d'un dossier dynamique revient à changer
+            # l'attribut/la relation concernée (ex. update_object valide une
+            # Version, donc validated devient True).
+            objects = objects.filter(**query.get("filter", {})).exclude(**query.get("exclude", {}))
         else:
             objects = objects.filter(links_from__nature=FOLDER_LINK_NATURE, links_from__target_id=selected_dossier)
 

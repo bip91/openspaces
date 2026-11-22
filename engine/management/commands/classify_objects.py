@@ -44,6 +44,23 @@ FOLDERS = {
     ],
 }
 
+# Dossiers dynamiques : appartenance calculée (query), pas posée par un Link.
+# `filter`/`exclude` — convention reprise de Django, chemins ORM classiques en
+# clé (voir ui/views.py::object_browse).
+DYNAMIC_FOLDERS = {
+    "En attente de validation": {
+        # Créé par un agent, jamais relu par un humain (engine/services/create.py :
+        # nature="agent" => validated=False). Se vide tout seul dès qu'un humain
+        # réenregistre l'objet (update_object positionne alors validated=True).
+        "filter": {"current_version__validated": False},
+    },
+    "Tables non classées": {
+        # Objets de type Table sans aucun Link de classification vers un Dossier.
+        "filter": {"base_type__name": "Table"},
+        "exclude": {"links_from__nature": FOLDER_LINK_NATURE},
+    },
+}
+
 
 class Command(BaseCommand):
     help = "Classe les objets réels accumulés dans l'espace de démo, par activité (Dossier)."
@@ -71,23 +88,17 @@ class Command(BaseCommand):
                     link_objects(FOLDER_LINK_NATURE, obj, folder, author=user)
                     classifications_created += 1
 
-        # Dossier dynamique : appartenance calculée (query), pas posée par un Link.
-        # « En attente de validation » = les objets dont la version courante n'a
-        # jamais été relue par un humain (nature="agent" => validated=False,
-        # engine/services/create.py). Se vide tout seul quand un humain réenregistre
-        # l'objet (update_object positionne alors validated=True).
-        dynamic_folder_created = False
-        if not Object.objects.filter(
-            space=space, base_type=folder_type, current_version__attributes__name="En attente de validation"
-        ).exists():
-            create_object(
-                space, folder_type, {"name": "En attente de validation", "query": {"validated": False}}, author=user
-            )
-            dynamic_folder_created = True
+        dynamic_folders_created = []
+        for folder_name, query in DYNAMIC_FOLDERS.items():
+            if not Object.objects.filter(
+                space=space, base_type=folder_type, current_version__attributes__name=folder_name
+            ).exists():
+                create_object(space, folder_type, {"name": folder_name, "query": query}, author=user)
+                dynamic_folders_created.append(folder_name)
 
         self.stdout.write(
             self.style.SUCCESS(
                 f"{len(folders_created)} dossier(s) créé(s), {classifications_created} classement(s) créé(s), "
-                f"dossier dynamique créé : {dynamic_folder_created}."
+                f"dossiers dynamiques créés : {dynamic_folders_created or 'aucun'}."
             )
         )
