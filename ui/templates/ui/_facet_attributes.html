@@ -1,0 +1,13 @@
+{% for key in attributes %}
+  <li class="dossier-node">
+    <details hx-get="{% url 'facet-values' %}?type={{ object_type.id }}&attr={{ key }}"
+             hx-trigger="toggle[this.open] once"
+             hx-target="find .facet-children"
+             hx-swap="innerHTML">
+      <summary>{{ key }}</summary>
+      <ul class="dossier-tree facet-children"><li class="muted">Chargement…</li></ul>
+    </details>
+  </li>
+{% empty %}
+  <li class="muted">Aucun attribut simple sur ce type.</li>
+{% endfor %}

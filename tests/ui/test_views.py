@@ -152,6 +152,46 @@ def test_object_browse_lists_objects_and_links(client, demo_context):
     assert b"correspondence" in preview_response.content
 
 
+def test_facet_types_lists_only_types_with_objects_in_space(client, demo_context, demo_second_type):
+    space, layer, document_type = demo_context
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+
+    response = client.get(reverse("facet-types"))
+
+    assert document_type.name.encode() in response.content
+    assert demo_second_type.name.encode() not in response.content
+
+
+def test_facet_attributes_excludes_array_properties(client, demo_context, demo_commande, demo_table_type):
+    response = client.get(reverse("facet-attributes"), {"type": str(demo_table_type.id)})
+
+    assert b"name" in response.content
+    assert b"fields" not in response.content
+
+
+def test_facet_values_lists_distinct_values_present(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"b")})
+    space, layer, document_type = demo_context
+
+    response = client.get(reverse("facet-values"), {"type": str(document_type.id), "attr": "size"})
+
+    assert b"value=1" in response.content  # taille de "a"
+
+
+def test_object_content_filters_by_integer_attribute_with_correct_type_coercion(client, demo_context):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})  # size=1
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"bb")})  # size=2
+    space, layer, document_type = demo_context
+
+    # La valeur arrive en chaîne (query string) ; sans retypage selon le
+    # schéma ("integer"), elle ne matcherait jamais l'entier stocké en JSON.
+    response = client.get(reverse("object-content"), {"type": str(document_type.id), "attr": "size", "value": "1"})
+
+    assert b"a.md" in response.content
+    assert b"b.md" not in response.content
+
+
 def test_object_detail_shows_the_three_views(client, demo_context, demo_commande):
     response = client.get(reverse("object-detail", args=[demo_commande.id]))
 

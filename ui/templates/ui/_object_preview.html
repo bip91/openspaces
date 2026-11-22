@@ -5,18 +5,18 @@
 
   <div class="preview-nav">
     {% if prev_id %}
-      <a id="prev-link" href="{% url 'object-preview' prev_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
-         hx-get="{% url 'object-preview' prev_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+      <a id="prev-link" href="{% url 'object-preview' prev_id %}?{{ filter_qs }}"
+         hx-get="{% url 'object-preview' prev_id %}?{{ filter_qs }}"
          hx-target="#browse-content" hx-swap="innerHTML">◀ précédent</a>
     {% else %}
       <span id="prev-link" class="muted">◀ précédent</span>
     {% endif %}
-    <a class="back-to-list" href="{% url 'object-content' %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
-       hx-get="{% url 'object-content' %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+    <a class="back-to-list" href="{% url 'object-content' %}?{{ filter_qs }}"
+       hx-get="{% url 'object-content' %}?{{ filter_qs }}"
        hx-target="#browse-content" hx-swap="innerHTML">↑ liste</a>
     {% if next_id %}
-      <a id="next-link" href="{% url 'object-preview' next_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
-         hx-get="{% url 'object-preview' next_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+      <a id="next-link" href="{% url 'object-preview' next_id %}?{{ filter_qs }}"
+         hx-get="{% url 'object-preview' next_id %}?{{ filter_qs }}"
          hx-target="#browse-content" hx-swap="innerHTML">suivant ▶</a>
     {% else %}
       <span id="next-link" class="muted">suivant ▶</span>
@@ -38,6 +38,8 @@
     {% csrf_token %}
     <input type="hidden" name="type" value="{{ selected_type }}">
     <input type="hidden" name="dossier_filter" value="{{ selected_dossier }}">
+    <input type="hidden" name="attr" value="{{ attr_key }}">
+    <input type="hidden" name="value" value="{{ attr_value }}">
     <select name="dossier">
       <option value="">Classer dans…</option>
       {% for d in classifiable_dossiers %}
@@ -54,8 +56,8 @@
     <nav class="view-tabs">
       {% for v in views %}
         <a class="{% if v == selected_view %}active{% endif %}"
-           href="{% url 'object-preview' object.id %}?type={{ selected_type }}&dossier={{ selected_dossier }}&view={{ v.template.id }}"
-           hx-get="{% url 'object-preview' object.id %}?type={{ selected_type }}&dossier={{ selected_dossier }}&view={{ v.template.id }}"
+           href="{% url 'object-preview' object.id %}?{{ filter_qs }}&view={{ v.template.id }}"
+           hx-get="{% url 'object-preview' object.id %}?{{ filter_qs }}&view={{ v.template.id }}"
            hx-target="#browse-content" hx-swap="innerHTML">{{ v.template.name }}</a>
       {% endfor %}
     </nav>
@@ -86,16 +88,16 @@
   <h2>Liens</h2>
   {% for link in links_out %}
     <div class="muted">↳ {{ link.nature }} →
-      <a href="{% url 'object-preview' link.target_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
-         hx-get="{% url 'object-preview' link.target_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+      <a href="{% url 'object-preview' link.target_id %}?{{ filter_qs }}"
+         hx-get="{% url 'object-preview' link.target_id %}?{{ filter_qs }}"
          hx-target="#browse-content" hx-swap="innerHTML">{{ link.target.current_version.attributes.name|default:link.target_id }}</a>
       ({{ link.status }})
     </div>
   {% endfor %}
   {% for link in links_in %}
     <div class="muted">↲ {{ link.nature }} ←
-      <a href="{% url 'object-preview' link.source_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
-         hx-get="{% url 'object-preview' link.source_id %}?type={{ selected_type }}&dossier={{ selected_dossier }}"
+      <a href="{% url 'object-preview' link.source_id %}?{{ filter_qs }}"
+         hx-get="{% url 'object-preview' link.source_id %}?{{ filter_qs }}"
          hx-target="#browse-content" hx-swap="innerHTML">{{ link.source.current_version.attributes.name|default:link.source_id }}</a>
       ({{ link.status }})
     </div>

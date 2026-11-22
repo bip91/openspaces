@@ -38,6 +38,25 @@
       {% include "ui/_dossier_node.html" with dossier=dossier selected_dossier=selected_dossier selected_type=selected_type %}
     {% endfor %}
   </ul>
+
+  {% comment %}
+  Explorer par attribut : racine distincte des dossiers — type puis attribut
+  puis valeur, chargés un niveau à la fois au dépliage (pas de modèle dédié,
+  pas de requête enregistrée : une exploration, pas un classement — à la
+  différence d'un dossier dynamique qui, lui, est nommé et réutilisable).
+  {% endcomment %}
+  <h2>Explorer par attribut</h2>
+  <ul class="dossier-tree">
+    <li class="dossier-node">
+      <details hx-get="{% url 'facet-types' %}"
+               hx-trigger="toggle[this.open] once"
+               hx-target="find .facet-children"
+               hx-swap="innerHTML">
+        <summary>par type, attribut, valeur</summary>
+        <ul class="dossier-tree facet-children"><li class="muted">Chargement…</li></ul>
+      </details>
+    </li>
+  </ul>
 </div>
 
 <div class="column content-column">

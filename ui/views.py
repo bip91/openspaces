@@ -132,14 +132,66 @@ def _dossier_tree(space, folder_type):
     return sorted(roots, key=_name)
 
 
-def _browse_queryset(space, selected_type, selected_dossier):
-    """Objets d'un espace filtrés par type et/ou dossier (statique ou
-    dynamique) — logique partagée entre la liste et l'aperçu, pour que les
-    flèches précédent/suivant circulent dans le même ensemble que la liste."""
+SCALAR_JSON_TYPES = {"string", "integer", "number", "boolean"}
+
+
+def _schema_properties(object_type):
+    schema = object_type.schema
+    return schema.get("properties", {}) if isinstance(schema, dict) else {}
+
+
+def _facet_attribute_keys(object_type):
+    """Attributs scalaires du schéma — pas les tableaux/objets (`fields`,
+    `steps` : une valeur distincte n'a pas de sens pour eux). Explorer par
+    attribut simple, pas un constructeur de requête générique."""
+    return sorted(key for key, spec in _schema_properties(object_type).items() if spec.get("type") in SCALAR_JSON_TYPES)
+
+
+def _coerce_attr_value(object_type, attr_key, raw_value):
+    """La valeur arrive toujours en chaîne (query string) ; on la retype
+    selon le schéma pour que le filtre JSONField matche réellement (`"True"`
+    ne vaut pas le booléen `true` stocké)."""
+    json_type = _schema_properties(object_type).get(attr_key, {}).get("type")
+    if json_type == "boolean":
+        return raw_value == "True"
+    if json_type == "integer":
+        return int(raw_value)
+    if json_type == "number":
+        return float(raw_value)
+    return raw_value
+
+
+def _facet_distinct_values(space, object_type, attr_key):
+    """Valeurs distinctes réellement présentes pour cet attribut, parmi les
+    objets de ce type dans cet espace — pas la liste théorique du schéma."""
+    values = (
+        Object.objects.filter(space=space, base_type=object_type)
+        .values_list(f"current_version__attributes__{attr_key}", flat=True)
+        .distinct()
+    )
+    return sorted((v for v in values if v is not None), key=str)
+
+
+def _browse_queryset(space, selected_type, selected_dossier, attr_key="", attr_value=""):
+    """Objets d'un espace filtrés par type, par dossier (statique ou
+    dynamique), et/ou par un attribut choisi dans « Explorer par attribut »
+    — logique partagée entre la liste et l'aperçu, pour que les flèches
+    précédent/suivant circulent dans le même ensemble que la liste."""
     objects = Object.objects.filter(space=space).select_related("base_type", "current_version")
 
     if selected_type:
         objects = objects.filter(base_type_id=selected_type)
+
+    if attr_key and selected_type:
+        # L'attribut est scopé au type (le schéma diffère d'un type à
+        # l'autre) — on recoerce la valeur depuis son type JSON déclaré,
+        # parce qu'elle arrive en query string, donc toujours une chaîne,
+        # et qu'un booléen/entier ne matche pas une chaîne dans le JSONField.
+        object_type = ObjectType.objects.filter(pk=selected_type).first()
+        if object_type:
+            objects = objects.filter(
+                **{f"current_version__attributes__{attr_key}": _coerce_attr_value(object_type, attr_key, attr_value)}
+            )
 
     if selected_dossier:
         dossier_object = Object.objects.filter(pk=selected_dossier).select_related("current_version").first()
@@ -171,6 +223,14 @@ def _is_htmx(request):
     return request.headers.get("HX-Request") == "true"
 
 
+def _filter_qs(selected_type="", selected_dossier="", attr_key="", attr_value=""):
+    """Chaîne de requête unique portant tout le contexte de filtrage courant
+    (type, dossier, attribut) — un seul endroit à faire évoluer plutôt que
+    chaque lien de chaque gabarit quand un nouveau filtre s'ajoute (ce qui
+    vient d'arriver avec attr/value)."""
+    return urlencode({"type": selected_type, "dossier": selected_dossier, "attr": attr_key, "value": attr_value})
+
+
 def _browse_shell_response(request, space, content_template, content_context, content_url):
     """Rend la coquille complète (arbre + panneau) avec ce contenu déjà
     inséré, pour toute visite qui n'est pas un échange htmx — rechargement,
@@ -192,6 +252,8 @@ def object_browse(request):
     space, layer, document_type, user = demo_context()
     selected_type = request.GET.get("type", "")
     selected_dossier = request.GET.get("dossier", "")
+    attr_key = request.GET.get("attr", "")
+    attr_value = request.GET.get("value", "")
     return render(
         request,
         "ui/object_browse.html",
@@ -200,7 +262,7 @@ def object_browse(request):
             **_tree_context(space),
             "selected_type": selected_type,
             "selected_dossier": selected_dossier,
-            "content_url": f"{reverse('object-content')}?{urlencode({'type': selected_type, 'dossier': selected_dossier})}",
+            "content_url": f"{reverse('object-content')}?{_filter_qs(selected_type, selected_dossier, attr_key, attr_value)}",
         },
     )
 
@@ -213,7 +275,9 @@ def object_content(request):
     space, layer, document_type, user = demo_context()
     selected_type = request.GET.get("type", "")
     selected_dossier = request.GET.get("dossier", "")
-    objects = _browse_queryset(space, selected_type, selected_dossier)
+    attr_key = request.GET.get("attr", "")
+    attr_value = request.GET.get("value", "")
+    objects = _browse_queryset(space, selected_type, selected_dossier, attr_key, attr_value)
 
     dossier_name = ""
     if selected_dossier:
@@ -225,11 +289,14 @@ def object_content(request):
         "selected_type": selected_type,
         "selected_dossier": selected_dossier,
         "dossier_name": dossier_name,
+        "attr_key": attr_key,
+        "attr_value": attr_value,
+        "filter_qs": _filter_qs(selected_type, selected_dossier, attr_key, attr_value),
     }
     if _is_htmx(request):
         return render(request, "ui/_object_content.html", content_context)
 
-    content_url = f"{reverse('object-content')}?{urlencode({'type': selected_type, 'dossier': selected_dossier})}"
+    content_url = f"{reverse('object-content')}?{content_context['filter_qs']}"
     return _browse_shell_response(request, space, "ui/_object_content.html", content_context, content_url)
 
 
@@ -262,7 +329,11 @@ def object_preview(request, object_id):
 
     selected_type = request.GET.get("type", "")
     selected_dossier = request.GET.get("dossier", "")
-    ids = list(_browse_queryset(space, selected_type, selected_dossier).values_list("id", flat=True))
+    attr_key = request.GET.get("attr", "")
+    attr_value = request.GET.get("value", "")
+    ids = list(
+        _browse_queryset(space, selected_type, selected_dossier, attr_key, attr_value).values_list("id", flat=True)
+    )
     try:
         position = ids.index(obj.id)
     except ValueError:
@@ -292,6 +363,9 @@ def object_preview(request, object_id):
         "classifiable_dossiers": classifiable_dossiers,
         "selected_type": selected_type,
         "selected_dossier": selected_dossier,
+        "attr_key": attr_key,
+        "attr_value": attr_value,
+        "filter_qs": _filter_qs(selected_type, selected_dossier, attr_key, attr_value),
         "prev_id": prev_id,
         "next_id": next_id,
         "message": request.GET.get("message", ""),
@@ -299,7 +373,7 @@ def object_preview(request, object_id):
     if _is_htmx(request):
         return render(request, "ui/_object_preview.html", preview_context)
 
-    params = {"type": selected_type, "dossier": selected_dossier}
+    params = {"type": selected_type, "dossier": selected_dossier, "attr": attr_key, "value": attr_value}
     if request.GET.get("view"):
         params["view"] = request.GET["view"]
     content_url = f"{reverse('object-preview', args=[obj.id])}?{urlencode(params)}"
@@ -326,10 +400,61 @@ def classify_object_view(request, object_id):
     else:
         message = "Choisis un dossier."
 
-    selected_type = request.POST.get("type", "")
-    selected_dossier = request.POST.get("dossier_filter", "")
-    query = urlencode({"type": selected_type, "dossier": selected_dossier, "message": message})
+    filter_qs = _filter_qs(
+        request.POST.get("type", ""),
+        request.POST.get("dossier_filter", ""),
+        request.POST.get("attr", ""),
+        request.POST.get("value", ""),
+    )
+    query = f"{filter_qs}&{urlencode({'message': message})}"
     return HttpResponseRedirect(f"{reverse('object-preview', args=[obj.id])}?{query}")
+
+
+# --- Explorer par attribut : racine distincte des dossiers, chargée paresseusement
+# (un niveau à la fois, au dépliage de chaque <details>) — le type et l'attribut
+# sont connus dynamiquement (schéma par type), à la différence des dossiers qui
+# sont une poignée d'objets réels qu'on peut tous rendre d'un coup.
+
+
+@require_GET
+def facet_types(request):
+    """Premier niveau : les types réellement présents dans l'espace (pas la
+    liste complète des types déclarés — inutile d'explorer un type vide)."""
+    space, layer, document_type, user = demo_context()
+    type_ids = Object.objects.filter(space=space).values_list("base_type_id", flat=True).distinct()
+    types = ObjectType.objects.filter(id__in=type_ids).order_by("name")
+    return render(request, "ui/_facet_types.html", {"types": types})
+
+
+@require_GET
+def facet_attributes(request):
+    """Deuxième niveau : les attributs scalaires du schéma de ce type."""
+    object_type = _lookup(ObjectType.objects.all(), request.GET.get("type"))
+    if object_type is None:
+        raise Http404
+    return render(
+        request,
+        "ui/_facet_attributes.html",
+        {"object_type": object_type, "attributes": _facet_attribute_keys(object_type)},
+    )
+
+
+@require_GET
+def facet_values(request):
+    """Troisième niveau : les valeurs distinctes réellement présentes pour cet
+    attribut, parmi les objets de ce type dans cet espace — chacune une
+    feuille qui filtre le panneau de droite (même mécanique que les dossiers)."""
+    space, layer, document_type, user = demo_context()
+    object_type = _lookup(ObjectType.objects.all(), request.GET.get("type"))
+    attr_key = request.GET.get("attr", "")
+    if object_type is None or not attr_key:
+        raise Http404
+    values = _facet_distinct_values(space, object_type, attr_key)
+    return render(
+        request,
+        "ui/_facet_values.html",
+        {"object_type": object_type, "attr_key": attr_key, "values": values},
+    )
 
 
 def _bus_log_context():

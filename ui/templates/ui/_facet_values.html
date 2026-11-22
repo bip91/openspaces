@@ -1,0 +1,13 @@
+{% for value in values %}
+  <li class="dossier-node">
+    <a class="dossier-link"
+       href="{% url 'object-browse' %}?type={{ object_type.id }}&attr={{ attr_key }}&value={{ value|urlencode }}"
+       hx-get="{% url 'object-content' %}?type={{ object_type.id }}&attr={{ attr_key }}&value={{ value|urlencode }}"
+       hx-target="#browse-content" hx-swap="innerHTML"
+       hx-push-url="{% url 'object-browse' %}?type={{ object_type.id }}&attr={{ attr_key }}&value={{ value|urlencode }}">
+      {{ value }}
+    </a>
+  </li>
+{% empty %}
+  <li class="muted">Aucune valeur.</li>
+{% endfor %}
