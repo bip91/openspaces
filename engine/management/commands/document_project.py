@@ -113,6 +113,28 @@ DECISIONS = [
             "menu contextuel »), pas deux à maintenir en parallèle."
         ),
     },
+    {
+        "name": "Gestionnaire d'objets réel : arbre+aperçu dans ui/, pas un nouveau prototype Svelte",
+        "justification": (
+            "Après plusieurs allers-retours sur un gestionnaire d'objets en "
+            "données bidon (prototypes/desktop), le moteur s'est révélé déjà "
+            "suffisant : 6 types réels peuplés, 9 Dossier réels dont deux déjà "
+            "dynamiques (« En attente de validation », « Tables non "
+            "classées »), et le harnais ui/ calculait déjà l'arbre des "
+            "dossiers et l'évaluation des requêtes dynamiques. Construire "
+            "l'arbre+aperçu directement dans ui/ (Django + htmx, le harnais "
+            "de test existant — pas l'interface du lot 2) réutilise ça tout "
+            "de suite plutôt que de le refabriquer en données fausses. Forme "
+            "Explorer/Nemo (arbre à gauche, contenu à droite) retenue plutôt "
+            "que le double-panneau symétrique façon Total Commander essayé "
+            "d'abord en Svelte : plus proche de ce qui était demandé "
+            "(mettre en évidence l'arborescence, visualiser rapidement). "
+            "Une racine « par attribut » générique a été écartée : elle "
+            "aurait réinventé un second mécanisme de classement à côté de "
+            "Dossier, contrairement à B10bis (trois axes jamais imbriqués) "
+            "— les dossiers dynamiques réels font déjà ce travail."
+        ),
+    },
 ]
 
 # Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
