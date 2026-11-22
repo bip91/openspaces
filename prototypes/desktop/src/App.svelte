@@ -48,12 +48,40 @@
     closeRadialMenu();
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (lastAction = ""), 2200);
-    if (verb === "Historique") {
-      windows = windows.map((w) => (w.id === "historique" ? { ...w, open: true } : w));
-      bringToFront("historique");
-    }
+    if (verb === "Historique") openHistoryWindow();
   }
   let toastTimer;
+
+  // --- Prompt global (barre du bas) : simulation scriptée, pas de vraie IA
+  // ni de clé d'API dans ce bundle client — choisi en conversation plutôt que
+  // de risquer une clé exposée dans un prototype jetable. « Toujours le
+  // prompt en première ligne, le contextuel dessous » : réalisé ici pour de
+  // vrai, pas juste discuté.
+  let promptText = "";
+  let promptResponse = "";
+
+  function openHistoryWindow() {
+    windows = windows.map((w) => (w.id === "historique" ? { ...w, open: true } : w));
+    bringToFront("historique");
+  }
+
+  function submitPrompt() {
+    const text = promptText.trim().toLowerCase();
+    if (!text) return;
+    if (text.includes("exigence") || text.includes("extrai")) {
+      promptResponse = "2 exigences extraites (simulation) — voir la fenêtre Objets.";
+    } else if (text.includes("lien")) {
+      promptResponse = "1 lien proposé vers « commande » (simulation).";
+    } else if (text.includes("historique")) {
+      promptResponse = "Historique ouvert (simulation).";
+      openHistoryWindow();
+    } else if (text.includes("espace")) {
+      promptResponse = `Espace actif : « ${spaces.find((s) => s.id === activeSpaceId)?.name} » (simulation).`;
+    } else {
+      promptResponse = "Je ne sais pas encore faire ça (simulation).";
+    }
+    promptText = "";
+  }
 
   const linkLines = [
     "délai obligatoire --correspondence--> commande",
@@ -291,11 +319,24 @@
       {/each}
     </div>
 
-    <nav class="dock" aria-label="Fenêtres">
-      {#each windows as win (win.id)}
-        <button class:open={win.open} on:click={() => toggleWindow(win.id)}>{win.title}</button>
-      {/each}
-    </nav>
+    <div class="bottombar">
+      <form class="promptbar" on:submit|preventDefault={submitPrompt}>
+        <input
+          type="text"
+          placeholder="Demande quelque chose (ex. « extraire les exigences », « ouvrir l'historique »)…"
+          bind:value={promptText}
+        />
+        <button type="submit">Envoyer</button>
+      </form>
+      {#if promptResponse}
+        <p class="prompt-response">{promptResponse}</p>
+      {/if}
+      <nav class="dock" aria-label="Fenêtres">
+        {#each windows as win (win.id)}
+          <button class:open={win.open} on:click={() => toggleWindow(win.id)}>{win.title}</button>
+        {/each}
+      </nav>
+    </div>
   </main>
 </div>
 
@@ -474,13 +515,44 @@
     background: linear-gradient(135deg, transparent 50%, #bbb 50%);
   }
 
+  .bottombar {
+    background: #fff;
+    border-top: 1px solid #ddd;
+  }
+
+  .promptbar {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.6rem 0.6rem 0;
+  }
+  .promptbar input {
+    flex: 1;
+    padding: 0.5rem 0.7rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 0.85rem;
+  }
+  .promptbar button {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #2563eb;
+    background: #2563eb;
+    color: #fff;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .prompt-response {
+    margin: 0.4rem 0.6rem 0;
+    font-size: 0.8rem;
+    color: #555;
+  }
+
   .dock {
     display: flex;
     gap: 0.5rem;
     justify-content: center;
     padding: 0.6rem;
-    background: #fff;
-    border-top: 1px solid #ddd;
   }
   .dock button {
     padding: 0.4rem 0.9rem;
