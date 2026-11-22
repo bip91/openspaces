@@ -50,6 +50,21 @@ DECISIONS = [
             "criticité/le cadre légal : direction actée, pas construite."
         ),
     },
+    {
+        "name": "Dossier dynamique : appartenance calculée, pas posée par un Link",
+        "justification": (
+            "Même type Dossier, attribut facultatif `query` (égalité sur des "
+            "champs de Version) — l'appartenance est calculée à l'affichage, "
+            "pas un Link explicite. Reprend un précédent établi (Smart Folders "
+            "macOS, Smart Collections Lightroom), pas une invention : concilie "
+            "B1 (retrouver par le sens) et le confort du dossier familier. "
+            "Vérifié en réel dans les deux sens sur « En attente de validation » "
+            "(query: validated=false) : un objet créé par l'agent y apparaît, "
+            "puis en sort sans toucher à un Link quand un humain le réenregistre "
+            "(update_object positionne validated=true de lui-même) — déplacer un "
+            "objet d'un dossier dynamique, c'est changer l'attribut, rien de plus."
+        ),
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
