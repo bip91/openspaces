@@ -53,6 +53,27 @@ L'utilisateur veut travailler sur des objets et leurs relations, quel que soit l
 
 Le besoin vaut pour plusieurs métiers : développement (flux, tables, exigences), ADV (sujets construits depuis des mails, réponses préparées), architecture SI.
 
+**Critère de pertinence d'un métier (persona).** Une activité ne vaut
+d'être prise comme cas d'usage que si elle fait *circuler* l'information
+entre plusieurs sources (mails, documents, tableurs, code) que l'utilisateur
+rassemble lui-même — c'est le problème de fond de ce document. Une activité
+déjà entièrement contenue dans une seule application métier intégrée
+(ex. un outil de ticket de support) n'en fait pas partie : cette
+application fait déjà son travail, et notre valeur est dans les manques
+*entre* applications, pas dans le remplacement d'une application qui
+fonctionne bien seule. Exemple tranché en conversation : le support/ticket
+est écarté par ce critère ; le juridique/contractuel est retenu (plusieurs
+sources — mails, brouillons — pour construire un contrat, plusieurs
+projets en parallèle).
+
+Personas retenus pour le jeu de test (lot 5) et au-delà : développement
+(atelier de design, déjà construit en fixtures), ADV / assistante
+administrative, architecture SI, directeur (tableurs, rapports récurrents),
+juridique/contractuel (sources multiples, versions à poids légal — teste
+`Version.validated`, jamais exercé jusqu'ici), et le travail de conception
+de ce projet lui-même (persona « Architecte produit », voir `Cas d'usage`
+dans le glossaire du CLAUDE.md).
+
 **Dossier (B10, reformulé).** Le classement est un attribut multi-valué,
 pas un conteneur à parent unique (à la manière d'un classement par
 métadonnées plutôt qu'un rangement physique) : un objet peut être classé
@@ -467,6 +488,11 @@ Cibles indicatives pour la maquette, à confirmer sur le poste réel.
 - Gabarits de vue : format de déclaration et partage.
 - Shell de bureau : KWin ou compositeur basé sur Smithay, une fois le modèle vérifié.
 - Liste des verbes universels (sept ou huit), à fixer au moment du shell.
+- Création d'objet en contexte, sans IA : aujourd'hui, seul l'import de
+  fichier (toujours `Document`) et `Dossier` ont un formulaire dédié dans
+  le harnais ; tout autre type ne se crée que par code. Une première
+  approche (formulaire générique par type, ou contextuel) sera nécessaire
+  une fois les fondamentaux du moteur en place — pas avant.
 
 **Sécurité (lot 2)** : orientation à approfondir, cohérence au niveau de l'espace, avec possibilité de restreindre l'accès au niveau d'un objet ou d'un attribut lors du partage. Le contenu des sources est non fiable pour les agents.
 
