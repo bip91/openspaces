@@ -65,6 +65,18 @@ DECISIONS = [
             "objet d'un dossier dynamique, c'est changer l'attribut, rien de plus."
         ),
     },
+    {
+        "name": "Hiérarchie de Dossier pour la navigation seulement",
+        "justification": (
+            "Même recette que le classement : un Link de plus (nature "
+            "`sous-dossier-de`), pas un nouveau mécanisme. L'appartenance reste "
+            "inchangée — un dossier parent purement navigationnel (« Vues ») ne "
+            "contient rien en propre, c'est volontaire (précédent Lightroom : "
+            "Collection Set regroupe des Collections sans rien posséder). Évite "
+            "de faire porter ce rôle par Space, qui en a déjà trois (réplication, "
+            "filtre comportemental, périmètre d'activité) — pas un quatrième."
+        ),
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
