@@ -77,6 +77,18 @@ DECISIONS = [
             "filtre comportemental, périmètre d'activité) — pas un quatrième."
         ),
     },
+    {
+        "name": "Menu radial remplacé par menu contextuel (prompt + liste)",
+        "justification": (
+            "Essayé pour de vrai dans le prototype desktop, pas sur supposition : "
+            "le radial n'est pas plus clair qu'une liste, malgré une mécanique qui "
+            "fonctionne. Remplacé par un pattern déjà éprouvé ailleurs (command "
+            "palette : VS Code, Notion, Linear, Raycast) — prompt en haut qui "
+            "filtre, commandes principales dessous — cohérent avec le prompt déjà "
+            "posé en barre du bas. Un seul composant (CommandMenu) réutilisé pour "
+            "les objets, les espaces, et les sous-menus (ex. « Classer dans… »)."
+        ),
+    },
 ]
 
 # Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
