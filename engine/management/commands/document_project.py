@@ -215,6 +215,32 @@ PROTOTYPES = [
             {"from": "badge-dossier", "to": "objet", "message": "classe par dépôt, sans passer par le menu"},
         ],
     },
+    {
+        "name": "Prototype — barre « ?/! » et gestionnaire de fichiers double panneau",
+        "persona": "architecte produit",
+        "description": (
+            "Ajouté au prototype fusionné (prototypes/desktop), décidé en "
+            "une seule fois : la barre du bas distingue désormais « ? » "
+            "(prompt IA, mode par défaut) et « ! » (commande directe, type "
+            "cp/ren) — même distinction que dans CommandMenu, portée là où "
+            "elle manquait, avec un seul espace de retour au-dessus de la "
+            "barre pour les deux. Le gestionnaire de fichiers (Système → "
+            "Fichiers) reprend le modèle Norton/Total Commander : un vrai "
+            "double panneau à diviseur interne glissable, pas deux fenêtres "
+            "indépendantes qui pourraient se désassortir — chaque panneau "
+            "choisit son dossier via son en-tête, glisser une carte d'un "
+            "panneau vers l'autre classe l'objet dans le dossier affiché en "
+            "face."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "barre-du-bas", "message": "tape « ? » ou rien → question IA"},
+            {"from": "utilisateur", "to": "barre-du-bas", "message": "tape « ! commande » → commande directe"},
+            {"from": "barre-du-bas", "to": "zone-retour", "message": "affiche la réponse au-dessus de la barre"},
+            {"from": "utilisateur", "to": "panneau-gauche", "message": "choisit un dossier dans l'en-tête"},
+            {"from": "utilisateur", "to": "carte-objet", "message": "glisse du panneau gauche vers le droit"},
+            {"from": "panneau-droit", "to": "objet", "message": "classe dans le dossier affiché à droite"},
+        ],
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
