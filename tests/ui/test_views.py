@@ -3,6 +3,7 @@ from django.urls import reverse
 
 from ai.schemas import ExtractedRequirement, ExtractionResult, LinkingResult, ProposedLink
 from engine.models import Blob, Link, Object, Proposal, Typing
+from engine.services.create import create_object
 
 
 def test_workspace_page_renders(client, demo_context):
@@ -34,6 +35,28 @@ def test_decide_proposal_accepts_extraction_and_chains_link_proposal(
     link_proposal = Proposal.objects.get(operation="proposition-liens")
     assert link_proposal.output["links"][0]["table_name"] == "commande"
     assert b"commande" in response.content
+
+
+def test_object_browse_filters_by_type(client, demo_context, demo_commande, demo_table_type):
+    client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
+
+    response = client.get(reverse("object-browse"), {"type": str(demo_table_type.id)})
+
+    assert b"commande" in response.content
+    assert b"a.md" not in response.content
+
+
+def test_object_browse_filters_by_dossier(client, demo_context, demo_commande, demo_user):
+    space, layer, document_type = demo_context
+    client.post(reverse("create-folder"), {"name": "mon-dossier"})
+    folder = Object.objects.get(current_version__attributes__name="mon-dossier")
+    client.post(reverse("link-object", args=[demo_commande.id]), {"target": folder.id, "nature": "classification"})
+    create_object(space, demo_commande.base_type, {"name": "hors-dossier"}, author=demo_user)
+
+    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+
+    assert b"commande" in response.content
+    assert b"hors-dossier" not in response.content
 
 
 def test_object_browse_lists_objects_and_links(client, demo_context):

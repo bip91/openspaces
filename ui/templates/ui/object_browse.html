@@ -4,6 +4,21 @@
 <div class="column">
   <a class="back" href="{% url 'workspace' %}">← retour</a>
   <h1>Objets</h1>
+  <form method="get">
+    <select name="type">
+      <option value="">tous les types</option>
+      {% for t in types %}
+        <option value="{{ t.id }}" {% if selected_type == t.id|stringformat:"s" %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="dossier">
+      <option value="">tous les dossiers</option>
+      {% for d in dossiers %}
+        <option value="{{ d.id }}" {% if selected_dossier == d.id|stringformat:"s" %}selected{% endif %}>{{ d.current_version.attributes.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit">filtrer</button>
+  </form>
   <table class="browse">
     <thead>
       <tr><th>nom</th><th>type</th><th>version</th><th>créé le</th></tr>

@@ -23,7 +23,7 @@ from engine.services.render import apply_view_edit as apply_view_edit_service
 from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
-from ui.demo import DEMO_FOLDER_TYPE_NAME, DEMO_TABLE_TYPE_NAME, demo_context
+from ui.demo import DEMO_FOLDER_TYPE_NAME, DEMO_TABLE_TYPE_NAME, FOLDER_LINK_NATURE, demo_context
 
 
 def _lookup(queryset, pk_value):
@@ -91,17 +91,47 @@ def object_list(request):
 @require_GET
 def object_browse(request):
     space, layer, document_type, user = demo_context()
-    objects = (
-        Object.objects.filter(space=space)
-        .select_related("base_type", "current_version")
-        .order_by("base_type__name", "-created_at")
-    )
+    objects = Object.objects.filter(space=space).select_related("base_type", "current_version")
+
+    selected_type = request.GET.get("type", "")
+    if selected_type:
+        objects = objects.filter(base_type_id=selected_type)
+
+    selected_dossier = request.GET.get("dossier", "")
+    if selected_dossier:
+        objects = objects.filter(
+            links_from__nature=FOLDER_LINK_NATURE, links_from__target_id=selected_dossier
+        )
+
+    objects = objects.order_by("base_type__name", "-created_at")
+
     links = (
         Link.objects.filter(source__space=space)
         .select_related("source__current_version", "target__current_version", "layer")
         .order_by("-created_at")
     )
-    return render(request, "ui/object_browse.html", {"space": space, "objects": objects, "links": links})
+
+    folder_type = ObjectType.objects.filter(name=DEMO_FOLDER_TYPE_NAME, scope=ObjectType.Scope.BASE).first()
+    dossiers = (
+        Object.objects.filter(space=space, base_type=folder_type).select_related("current_version")
+        if folder_type
+        else Object.objects.none()
+    )
+    types = ObjectType.objects.filter(scope=ObjectType.Scope.BASE).order_by("name")
+
+    return render(
+        request,
+        "ui/object_browse.html",
+        {
+            "space": space,
+            "objects": objects,
+            "links": links,
+            "types": types,
+            "dossiers": dossiers,
+            "selected_type": selected_type,
+            "selected_dossier": selected_dossier,
+        },
+    )
 
 
 def _bus_log_context():
