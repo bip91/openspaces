@@ -79,6 +79,30 @@ DECISIONS = [
     },
 ]
 
+# Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
+# suivis ici comme de vrais Cas d'usage — liste à compléter au fil des
+# prototypes construits.
+PROTOTYPES = [
+    {
+        "name": "Prototype — bande d'espaces",
+        "persona": "architecte produit",
+        "description": (
+            "prototypes/space-switcher (Svelte + Vite), jetable, données "
+            "bidon, pas branché sur le vrai moteur. Teste le geste : bande "
+            "persistante plutôt qu'un menu radial pour l'accès aux espaces "
+            "(« toujours accessible » et « sélection rapide d'un verbe » sont "
+            "deux besoins différents, pas le même widget)."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "bande", "message": "clique une bulle d'espace"},
+            {"from": "bande", "to": "contenu", "message": "affiche les objets de l'espace actif"},
+            {"from": "utilisateur", "to": "objet", "message": "glisse un objet"},
+            {"from": "objet", "to": "bande", "message": "dépose sur une autre bulle"},
+            {"from": "bande", "to": "objet", "message": "déplace l'objet vers cet espace"},
+        ],
+    },
+]
+
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
 # engine/services/propose.py::record_proposal), le même mécanisme que pour les
 # observations UI déjà capturées.
@@ -145,6 +169,27 @@ class Command(BaseCommand):
                 link_objects("a-produit", architecte, decision, author=user)
                 links_created += 1
 
+        prototypes_created = []
+        for prototype in PROTOTYPES:
+            use_case = Object.objects.filter(
+                space=space, base_type=use_case_type, current_version__attributes__name=prototype["name"]
+            ).first()
+            if use_case is None:
+                use_case = create_object(
+                    space,
+                    use_case_type,
+                    {
+                        "name": prototype["name"],
+                        "persona": prototype["persona"],
+                        "description": prototype["description"],
+                        "steps": prototype["steps"],
+                    },
+                    author=user,
+                )
+                prototypes_created.append(prototype["name"])
+            if not use_case.links_from.filter(nature="derive-de", target=architecte).exists():
+                link_objects("derive-de", use_case, architecte, author=user)
+
         observations_created = []
         for title, text in OBSERVATIONS:
             if not Proposal.objects.filter(operation="observation", input__text=text).exists():
@@ -156,6 +201,10 @@ class Command(BaseCommand):
             for name, was_created in (
                 (f"décisions : {', '.join(decisions_created)}" if decisions_created else "", bool(decisions_created)),
                 (f"liens architecte → décision ({links_created})" if links_created else "", bool(links_created)),
+                (
+                    f"prototypes : {', '.join(prototypes_created)}" if prototypes_created else "",
+                    bool(prototypes_created),
+                ),
                 (
                     f"observations : {', '.join(observations_created)}" if observations_created else "",
                     bool(observations_created),
