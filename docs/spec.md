@@ -47,11 +47,28 @@ L'utilisateur veut travailler sur des objets et leurs relations, quel que soit l
 | B7 | Voir les écarts d'interprétation entre rôles | une règle de gestion contredite par une contrainte technique |
 | B8 | Déléguer les transformations à des agents et garder la main à chaque niveau | « mets à jour la spec », puis retouche directe |
 | B9 | Comparer, voir un résultat, consulter une référence sans basculer | source et résultat côte à côte |
-| B10 | Aucun entretien manuel de l'organisation | types, liens, rattachements proposés, validés d'un geste |
+| B10 | Aucun entretien manuel *séparé* de l'organisation | le classement vient de l'activité elle-même (espace, geste de dépôt ou de lien) ; l'IA complète ce qui n'a pas été lié explicitement, jamais la voie principale |
 | B11 | Travailler seul ou à plusieurs, en local et hors ligne | un espace privé, puis partagé |
 | B12 | Maîtrise des données : local par défaut, souverain, droits respectés | aucune fuite d'un espace vers un autre |
 
 Le besoin vaut pour plusieurs métiers : développement (flux, tables, exigences), ADV (sujets construits depuis des mails, réponses préparées), architecture SI.
+
+**Dossier (B10, reformulé).** Le classement est un attribut multi-valué,
+pas un conteneur à parent unique (à la manière d'un classement par
+métadonnées plutôt qu'un rangement physique) : un objet peut être classé
+dans plusieurs dossiers à la fois, et le dossier n'est qu'une voie de
+retrouvailles parmi d'autres (nom, sens, type, lien explicite — B1 reste
+entier). Un dossier n'est pas un sous-espace : `Space` reste la seule
+frontière de droits et de partage ; mélanger les deux rouvrirait une
+question de droits fins hors périmètre de la maquette. Limite connue :
+les objets sont scopés à un seul `Space` (relation unique), donc un
+référentiel partagé entre plusieurs espaces (par exemple des tables
+importées depuis le code, utiles à plusieurs projets) n'est pas résolu —
+non bloquant tant qu'un seul espace est en jeu. `Space`, potentiellement
+hiérarchique en sous-espace plus tard, portera les droits et le partage
+le jour où c'est traité. Enfin, le geste de classement lui-même (aujourd'hui
+un formulaire) pose le modèle de données, pas l'ergonomie à coût quasi nul
+visée par la future couche d'interaction (hors périmètre maquette).
 
 ## Concepts et vocabulaire
 

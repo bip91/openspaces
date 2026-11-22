@@ -10,6 +10,7 @@ urlpatterns = [
     path("bus/log/", views.bus_log, name="bus-log"),
     path("bus/call/", views.trigger_bus_call, name="bus-call"),
     path("objects/import/", views.import_object, name="import-object"),
+    path("objects/folders/", views.create_folder, name="create-folder"),
     path("objects/<uuid:object_id>/update/", views.update_object_view, name="update-object"),
     path("objects/<uuid:object_id>/link/", views.link_object_view, name="link-object"),
     path("objects/<uuid:object_id>/type/", views.type_object_view, name="type-object"),

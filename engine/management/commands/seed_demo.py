@@ -1,11 +1,13 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from engine.models import Aspect, Layer, Object, ObjectType, Space, ViewTemplate
+from engine.models import Aspect, Layer, Link, Object, ObjectType, Space, ViewTemplate
 from engine.services.create import create_object
 from engine.services.link import link_objects
 from ui.demo import (
     DEMO_EXIGENCE_OBJECT_NAME,
+    DEMO_FOLDER_OBJECT_NAME,
+    DEMO_FOLDER_TYPE_NAME,
     DEMO_LAYER_ROLE,
     DEMO_LAYER_ROLE_FONCTIONNEL,
     DEMO_SECOND_TYPE_NAME,
@@ -14,6 +16,7 @@ from ui.demo import (
     DEMO_TABLE_TYPE_NAME,
     DEMO_TYPE_NAME,
     DEMO_USERNAME,
+    FOLDER_LINK_NATURE,
 )
 
 
@@ -157,6 +160,35 @@ class Command(BaseCommand):
             link_objects("correspondence", exigence, commande, layer=layer_fonctionnel, author=user)
             exigence_created = True
 
+        exigence = Object.objects.get(
+            space=space, base_type=exigence_type, current_version__attributes__name=DEMO_EXIGENCE_OBJECT_NAME
+        )
+
+        # Dossier : classement multi-valué (Object + Link), pas un sous-espace — voir
+        # CLAUDE.md (glossaire) et docs/spec.md (B10).
+        folder_type, folder_type_created = ObjectType.objects.get_or_create(
+            name=DEMO_FOLDER_TYPE_NAME,
+            scope=ObjectType.Scope.BASE,
+            defaults={"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}},
+        )
+
+        folder_created = False
+        if not Object.objects.filter(
+            space=space, base_type=folder_type, current_version__attributes__name=DEMO_FOLDER_OBJECT_NAME
+        ).exists():
+            create_object(space, folder_type, {"name": DEMO_FOLDER_OBJECT_NAME}, author=user)
+            folder_created = True
+
+        folder = Object.objects.get(
+            space=space, base_type=folder_type, current_version__attributes__name=DEMO_FOLDER_OBJECT_NAME
+        )
+
+        classification_created = False
+        for classified in (commande, exigence):
+            if not Link.objects.filter(source=classified, target=folder, nature=FOLDER_LINK_NATURE).exists():
+                link_objects(FOLDER_LINK_NATURE, classified, folder, author=user)
+                classification_created = True
+
         created = [
             name
             for name, was_created in (
@@ -171,6 +203,9 @@ class Command(BaseCommand):
                 ("table commande", commande_created),
                 ("aspects", aspects_created),
                 ("exigence délai obligatoire", exigence_created),
+                ("type Dossier", folder_type_created),
+                ("dossier de démo", folder_created),
+                ("classement dans le dossier", classification_created),
             )
             if was_created
         ]

@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from engine.models import Layer, ObjectType, Space, ViewTemplate
 from engine.services.create import create_object
 from ui.demo import (
+    DEMO_FOLDER_TYPE_NAME,
     DEMO_LAYER_ROLE,
     DEMO_LAYER_ROLE_FONCTIONNEL,
     DEMO_SECOND_TYPE_NAME,
@@ -58,6 +59,15 @@ def demo_type(db):
                 "size": {"type": "integer"},
             },
         },
+    )
+
+
+@pytest.fixture
+def demo_folder_type(db):
+    return ObjectType.objects.create(
+        name=DEMO_FOLDER_TYPE_NAME,
+        scope=ObjectType.Scope.BASE,
+        schema={"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}},
     )
 
 
@@ -121,5 +131,5 @@ def demo_commande(demo_space, demo_table_type, demo_user, demo_view_templates):
 
 
 @pytest.fixture
-def demo_context(demo_space, demo_layer, demo_layer_fonctionnel, demo_type, demo_second_type):
+def demo_context(demo_space, demo_layer, demo_layer_fonctionnel, demo_type, demo_second_type, demo_folder_type):
     return demo_space, demo_layer, demo_type

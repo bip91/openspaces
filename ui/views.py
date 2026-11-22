@@ -23,7 +23,7 @@ from engine.services.render import apply_view_edit as apply_view_edit_service
 from engine.services.render import render_view as render_view_service
 from engine.services.typing import set_typing as set_typing_service
 from engine.services.update import update_object as update_object_service
-from ui.demo import DEMO_TABLE_TYPE_NAME, demo_context
+from ui.demo import DEMO_FOLDER_TYPE_NAME, DEMO_TABLE_TYPE_NAME, demo_context
 
 
 def _lookup(queryset, pk_value):
@@ -145,6 +145,25 @@ def trigger_bus_call(request):
 
     bus_call(verb, client_id, payload)
     return render(request, "ui/_bus_log.html", _bus_log_context())
+
+
+@require_POST
+def create_folder(request):
+    """Crée un objet Dossier (classement multi-valué, pas un sous-espace —
+    voir CLAUDE.md). Le classement lui-même se fait avec le lien générique
+    existant (``link-object``), aucun code dédié n'est nécessaire pour ça."""
+    space, layer, document_type, user = demo_context()
+    name = request.POST.get("name", "").strip()
+    errors = []
+    if name:
+        folder_type = ObjectType.objects.get(name=DEMO_FOLDER_TYPE_NAME, scope=ObjectType.Scope.BASE)
+        create_object(space, folder_type, {"name": name}, author=user)
+    else:
+        errors.append("indique un nom de dossier.")
+
+    context = _object_list_context(space)
+    context["errors"] = errors
+    return render(request, "ui/_object_list.html", context)
 
 
 @require_POST

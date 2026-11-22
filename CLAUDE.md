@@ -32,6 +32,7 @@ Le but n'est pas un produit : la maquette vérifie quatre hypothèses (voir la s
 | Calque | `Layer` | lecture d'un espace par une personne ou un rôle |
 | Espace | `Space` | périmètre de travail, privé ou partagé |
 | Objet-frontière | `boundary object` | objet partagé par plusieurs calques (pas de modèle dédié) |
+| Dossier | `Object` (type « Dossier ») + `Link` (nature `classification`) | classement multi-valué, pas un sous-espace, pas la seule voie de recherche ; pas de modèle dédié |
 | Divergence | `Divergence` | écart signalé entre calques, jamais corrigé en silence |
 | Objet dérivé | `derived object` | produit par une opération, recalculable |
 | Opération | `Operation` | verbe humain ou opération IA |
@@ -90,7 +91,7 @@ docs/              spec exportée, décisions
 
 ## Périmètre de la maquette
 
-Dans : un espace, deux calques (développeur, fonctionnel), types Table, Champ, Flux, Exigence, Décision ; vues table, Mermaid, Markdown ; trois aspects (notification de changement de champ, divergence exigence/contrainte, attribution) ; trois opérations IA (extraction d'exigences, réinterprétation de la spec, proposition de liens) ; journal des propositions ; serveur MCP.
+Dans : un espace, deux calques (développeur, fonctionnel), types Table, Champ, Flux, Exigence, Décision, Dossier ; vues table, Mermaid, Markdown ; trois aspects (notification de changement de champ, divergence exigence/contrainte, attribution) ; trois opérations IA (extraction d'exigences, réinterprétation de la spec, proposition de liens) ; journal des propositions ; serveur MCP.
 
 Hors : shell de bureau, synchronisation et partage d'espaces, univers global, adaptateur mail, ajustement de modèle, droits fins, rosace, poche, barres.
 

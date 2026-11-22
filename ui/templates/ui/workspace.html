@@ -9,6 +9,11 @@
       <input type="file" name="files" id="file-input" multiple style="display:none">
     </div>
   </form>
+  <form hx-post="{% url 'create-folder' %}" hx-target="#object-list" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+    {% csrf_token %}
+    <input type="text" name="name" placeholder="nom du dossier">
+    <button type="submit">créer un dossier</button>
+  </form>
   <div id="object-list" hx-get="{% url 'object-list' %}" hx-trigger="load, every 2s" hx-swap="innerHTML">
     {% include "ui/_object_list.html" %}
   </div>

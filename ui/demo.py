@@ -17,6 +17,9 @@ DEMO_SECOND_TYPE_NAME = "Exigence"
 DEMO_TABLE_TYPE_NAME = "Table"
 DEMO_TABLE_OBJECT_NAME = "commande"
 DEMO_EXIGENCE_OBJECT_NAME = "délai obligatoire"
+DEMO_FOLDER_TYPE_NAME = "Dossier"
+DEMO_FOLDER_OBJECT_NAME = "classeur-démo"
+FOLDER_LINK_NATURE = "classification"
 
 
 def demo_context():

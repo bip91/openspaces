@@ -166,6 +166,33 @@ def test_import_object_with_same_name_and_same_content_does_not_bump_version(cli
     assert obj.current_version.number == 1
 
 
+def test_create_folder_creates_a_folder_object(client, demo_context):
+    response = client.post(reverse("create-folder"), {"name": "mon-dossier"})
+
+    assert response.status_code == 200
+    assert Object.objects.filter(current_version__attributes__name="mon-dossier").exists()
+    assert b"mon-dossier" in response.content
+
+
+def test_create_folder_requires_a_name(client, demo_context):
+    response = client.post(reverse("create-folder"), {"name": ""})
+
+    assert response.status_code == 200
+    assert not Object.objects.filter(base_type__name="Dossier").exists()
+    assert b"dossier" in response.content
+
+
+def test_classifying_an_object_into_a_folder_shows_in_its_links(client, demo_context, demo_commande):
+    client.post(reverse("create-folder"), {"name": "mon-dossier"})
+    folder = Object.objects.get(current_version__attributes__name="mon-dossier")
+
+    client.post(reverse("link-object", args=[demo_commande.id]), {"target": folder.id, "nature": "classification"})
+    response = client.get(reverse("object-detail", args=[demo_commande.id]))
+
+    assert b"classification" in response.content
+    assert b"mon-dossier" in response.content
+
+
 def test_update_object_renames_it(client, demo_context, settings, tmp_path):
     settings.BLOB_STORAGE_ROOT = str(tmp_path)
     upload = SimpleUploadedFile("spec.md", b"# spec", content_type="text/markdown")
