@@ -193,6 +193,28 @@ PROTOTYPES = [
             {"from": "menu-radial", "to": "toast", "message": "confirme l'action choisie"},
         ],
     },
+    {
+        "name": "Prototype — dossiers épinglés interactifs",
+        "persona": "architecte produit",
+        "description": (
+            "Ajouté au prototype fusionné (prototypes/desktop). Les badges "
+            "de dossier épinglés étaient inertes (initiale + tooltip). "
+            "Classification réellement multi-valuée (un objet porte "
+            "plusieurs dossierIds, comme le vrai Link de classification), "
+            "clic sur un badge pour ouvrir son contenu réel, glisser-déposer "
+            "une carte sur un badge comme second geste possible — la même "
+            "alternative menu/glisser déjà établie pour déplacer un objet "
+            "vers un espace."
+        ),
+        "steps": [
+            {"from": "utilisateur", "to": "carte-objet", "message": "clic droit → Classer dans…"},
+            {"from": "menu", "to": "objet", "message": "ajoute le dossier choisi (multi-valué)"},
+            {"from": "utilisateur", "to": "badge-dossier", "message": "clique"},
+            {"from": "badge-dossier", "to": "fenetre-dossier", "message": "liste les objets classés dedans"},
+            {"from": "utilisateur", "to": "carte-objet", "message": "glisse vers un badge-dossier"},
+            {"from": "badge-dossier", "to": "objet", "message": "classe par dépôt, sans passer par le menu"},
+        ],
+    },
 ]
 
 # Points relevés, pas encore tranchés — Proposal sans sortie IA (voir
