@@ -142,12 +142,44 @@
       return;
     }
     if (cmd === "Nouveau dossier ici") {
-      const name = `Dossier ${dossiers.filter((d) => d.spaceId === space.id).length + 1}`;
-      dossiers = [...dossiers, { id: Date.now(), name, spaceId: space.id }];
-      flashAction(`Dossier « ${name} » créé dans « ${space.name} »`);
+      const dossier = createDossier(space.id);
+      flashAction(`Dossier « ${dossier.name} » créé dans « ${space.name} »`);
     } else {
       flashAction(`${cmd} (simulation) — « ${space.name} »`);
     }
+  }
+
+  function createDossier(spaceId) {
+    const name = `Dossier ${dossiers.filter((d) => d.spaceId === spaceId).length + 1}`;
+    const dossier = { id: Date.now(), name, spaceId };
+    dossiers = [...dossiers, dossier];
+    return dossier;
+  }
+
+  // Clic droit dans la zone des dossiers épinglés (sur un badge ou l'espace
+  // vide autour) : un « + » pour en créer un, et la liste des dossiers déjà
+  // présents (premier niveau — pas de sous-dossiers dans ce prototype) pour
+  // les rouvrir sans viser précisément leur badge.
+  function openDossierStripMenu(event) {
+    event.preventDefault();
+    const { clientX: x, clientY: y } = event;
+    const spaceDossiers = dossiers.filter((d) => d.spaceId === activeSpaceId);
+    commandMenu = {
+      x,
+      y,
+      title: "Dossiers",
+      commands: ["+", ...spaceDossiers.map((d) => d.name)],
+      onChoose: (cmd) => {
+        closeCommandMenu();
+        if (cmd === "+") {
+          const dossier = createDossier(activeSpaceId);
+          flashAction(`Dossier « ${dossier.name} » créé`);
+          return;
+        }
+        const dossier = spaceDossiers.find((d) => d.name === cmd);
+        if (dossier) openDossierWindow(dossier, x, y);
+      },
+    };
   }
 
   // --- Prompt global (barre du bas) : simulation scriptée, pas de vraie IA
@@ -158,16 +190,28 @@
   let promptText = "";
   let promptResponse = "";
 
+  // atX/atY arrivent en coordonnées écran (clientX/clientY d'un clic), mais
+  // une fenêtre se positionne en coordonnées locales à .desktop — décalé de
+  // la largeur de la barre latérale. Sans conversion, un clic près du bord
+  // gauche (ex. un badge de dossier, dans la barre elle-même) plaçait la
+  // fenêtre à une abscisse négative : invisible, « cachée sous la barre ».
+  // Bornée aussi aux dimensions de .desktop pour ne jamais déborder à droite/
+  // en bas.
+  function placeNear(win, atX, atY) {
+    if (atX == null || !desktopEl) return { x: win.x, y: win.y };
+    const rect = desktopEl.getBoundingClientRect();
+    const maxX = Math.max(8, desktopEl.clientWidth - win.width - 8);
+    const maxY = Math.max(8, desktopEl.clientHeight - win.height - 8);
+    return {
+      x: Math.min(Math.max(8, atX - rect.left - win.width / 2), maxX),
+      y: Math.min(Math.max(8, atY - rect.top + 16), maxY),
+    };
+  }
+
   function openHistoryWindow(objectName, atX, atY) {
     windows = windows.map((w) =>
       w.id === "historique"
-        ? {
-            ...w,
-            title: objectName ? `Historique — ${objectName}` : "Historique",
-            x: atX != null ? atX - w.width / 2 : w.x,
-            y: atY != null ? atY + 16 : w.y,
-            open: true,
-          }
+        ? { ...w, title: objectName ? `Historique — ${objectName}` : "Historique", ...placeNear(w, atX, atY), open: true }
         : w
     );
     bringToFront("historique");
@@ -180,15 +224,7 @@
   function openDossierWindow(dossier, atX, atY) {
     viewedDossierId = dossier.id;
     windows = windows.map((w) =>
-      w.id === "dossier"
-        ? {
-            ...w,
-            title: `Dossier — ${dossier.name}`,
-            x: atX != null ? atX - w.width / 2 : w.x,
-            y: atY != null ? atY + 16 : w.y,
-            open: true,
-          }
-        : w
+      w.id === "dossier" ? { ...w, title: `Dossier — ${dossier.name}`, ...placeNear(w, atX, atY), open: true } : w
     );
     bringToFront("dossier");
   }
@@ -417,13 +453,14 @@
         </button>
       {/each}
 
-      <div class="pinned-dossiers">
+      <div class="pinned-dossiers" on:contextmenu={openDossierStripMenu}>
         {#each pinnedDossiers as dossier (dossier.id)}
           <button
             class="dossier-badge"
             class:drag-over={dossier.id === dragOverDossierId}
             title={dossier.name}
             on:click={(e) => openDossierWindow(dossier, e.clientX, e.clientY)}
+            on:contextmenu={openDossierStripMenu}
             on:dragover={(e) => onDossierDragOver(e, dossier.id)}
             on:dragleave={onDossierDragLeave}
             on:drop={(e) => onDossierDrop(e, dossier)}
