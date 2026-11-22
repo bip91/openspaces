@@ -135,6 +135,25 @@ DECISIONS = [
             "— les dossiers dynamiques réels font déjà ce travail."
         ),
     },
+    {
+        "name": "Explorer par attribut construit malgré tout — navigation, pas classement",
+        "justification": (
+            "Décision précédente révisée après clarification : l'utilisateur "
+            "voulait vraiment une racine générique type → attribut → valeur "
+            "pour explorer sans savoir encore ce qu'on cherche, pas seulement "
+            "les deux dossiers dynamiques nommés déjà réels. Construit comme "
+            "une branche d'arbre distincte, chargée paresseusement (un niveau "
+            "à la fois, <details> + htmx au dépliage) — pas comme un nouveau "
+            "Dossier dynamique générique. Le distinguo qui lève la "
+            "contradiction avec la décision précédente : c'est de la "
+            "navigation calculée à la volée, aucune écriture, aucun objet "
+            "créé — pas un second mécanisme de classement à côté de Dossier, "
+            "qui reste la seule façon de nommer et réutiliser un filtre. "
+            "Attributs limités aux scalaires du schéma (tableaux/objets "
+            "exclus : une valeur distincte n'a pas de sens pour `fields` ou "
+            "`steps`)."
+        ),
+    },
 ]
 
 # Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
