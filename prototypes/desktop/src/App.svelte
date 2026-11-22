@@ -1,6 +1,6 @@
 <script>
   import CommandMenu from "./CommandMenu.svelte";
-  import { LayoutGrid, Link as LinkIcon, Cpu, Settings } from "@lucide/svelte";
+  import { Cpu } from "@lucide/svelte";
 
   // Prototype jetable : fusion des prototypes précédents (bande d'espaces,
   // fenêtrage glissable/accrochable), pas branché sur le vrai moteur, données
@@ -13,6 +13,13 @@
     { id: "lumen", name: "Refonte boutique Lumen", color: "#2563eb" },
     { id: "acme", name: "Client ACME", color: "#16a34a" },
   ];
+  // Système n'est pas un espace de travail (pas d'activité, pas de dossiers,
+  // pas de sélection) — juste un espace de plus dans la liste pour que ses
+  // fonctions passent par le même menu clic-droit que les autres, plutôt
+  // qu'une section d'icônes à part codée en dur.
+  const SYSTEM_SPACE = { id: "system", name: "Système" };
+  const SYSTEM_COMMANDS = ["Objets", "Liens", "Bus", "Paramètres"];
+
   let activeSpaceId = "demo";
   let dragOverSpaceId = null;
 
@@ -102,13 +109,21 @@
       x,
       y,
       title: space.name,
-      commands: SPACE_COMMANDS,
+      commands: space.id === "system" ? SYSTEM_COMMANDS : SPACE_COMMANDS,
       onChoose: (cmd) => handleSpaceCommand(cmd, space),
     };
   }
 
   function handleSpaceCommand(cmd, space) {
     closeCommandMenu();
+    if (cmd === "Objets" || cmd === "Liens" || cmd === "Bus") {
+      toggleWindow(cmd === "Objets" ? "objets" : cmd === "Liens" ? "liens" : "bus");
+      return;
+    }
+    if (cmd === "Paramètres") {
+      flashAction("Paramètres — pas encore construit");
+      return;
+    }
     if (cmd === "Nouveau dossier ici") {
       const name = `Dossier ${dossiers.filter((d) => d.spaceId === space.id).length + 1}`;
       dossiers = [...dossiers, { id: Date.now(), name, spaceId: space.id }];
@@ -344,41 +359,17 @@
           <div class="dossier-badge" title={dossier.name}>{dossier.name.slice(0, 1).toUpperCase()}</div>
         {/each}
       </div>
-    </div>
 
-    <div class="strip-spacer"></div>
-
-    <!-- Outils système : catalogues globaux (pas scopés à un objet ni un
-    verbe) — distincts des espaces (contexte) et des commandes (barre du
-    bas). Historique n'y est pas : ce n'est pas une destination fixe, il
-    s'ouvre tout seul quand une commande l'invoque sur un objet précis. -->
-    <div class="strip-bottom">
+      <!-- Système : pas un espace de travail, juste un espace de plus dans
+      la liste — ses fonctions (Objets, Liens, Bus, Paramètres) passent par
+      le même menu clic-droit que n'importe quel autre espace. -->
       <button
-        class="tool-icon"
-        class:open={windows.find((w) => w.id === "objets")?.open}
-        title="Objets"
-        on:click={() => toggleWindow("objets")}
+        class="space-icon system-icon"
+        title="Système"
+        on:click={(e) => openSpaceMenu(e, SYSTEM_SPACE)}
+        on:contextmenu={(e) => openSpaceMenu(e, SYSTEM_SPACE)}
       >
-        <LayoutGrid size={18} />
-      </button>
-      <button
-        class="tool-icon"
-        class:open={windows.find((w) => w.id === "liens")?.open}
-        title="Liens"
-        on:click={() => toggleWindow("liens")}
-      >
-        <LinkIcon size={18} />
-      </button>
-      <button
-        class="tool-icon"
-        class:open={windows.find((w) => w.id === "bus")?.open}
-        title="Bus"
-        on:click={() => toggleWindow("bus")}
-      >
-        <Cpu size={18} />
-      </button>
-      <button class="tool-icon" title="Paramètres (pas encore construit)" on:click={() => flashAction("Paramètres — pas encore construit")}>
-        <Settings size={18} />
+        <Cpu size={16} />
       </button>
     </div>
   </nav>
@@ -503,39 +494,6 @@
     gap: 0.6rem;
   }
 
-  .strip-spacer {
-    flex: 1;
-  }
-
-  .strip-bottom {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.4rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid #eee;
-    width: 100%;
-  }
-
-  .tool-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
-    color: #666;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-  }
-  .tool-icon:hover {
-    background: #f3f4f6;
-  }
-  .tool-icon.open {
-    background: #eff4ff;
-    color: #2563eb;
-  }
 
   .space-icon {
     width: 36px;
@@ -558,6 +516,21 @@
   .space-icon.drag-over {
     transform: scale(1.2);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--color) 40%, transparent);
+  }
+
+  .system-icon {
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    color: #666;
+    margin-top: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .system-icon:hover {
+    background: #f3f4f6;
   }
 
   .pinned-dossiers {
