@@ -71,8 +71,23 @@ class Command(BaseCommand):
                     link_objects(FOLDER_LINK_NATURE, obj, folder, author=user)
                     classifications_created += 1
 
+        # Dossier dynamique : appartenance calculée (query), pas posée par un Link.
+        # « En attente de validation » = les objets dont la version courante n'a
+        # jamais été relue par un humain (nature="agent" => validated=False,
+        # engine/services/create.py). Se vide tout seul quand un humain réenregistre
+        # l'objet (update_object positionne alors validated=True).
+        dynamic_folder_created = False
+        if not Object.objects.filter(
+            space=space, base_type=folder_type, current_version__attributes__name="En attente de validation"
+        ).exists():
+            create_object(
+                space, folder_type, {"name": "En attente de validation", "query": {"validated": False}}, author=user
+            )
+            dynamic_folder_created = True
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"{len(folders_created)} dossier(s) créé(s), {classifications_created} classement(s) créé(s)."
+                f"{len(folders_created)} dossier(s) créé(s), {classifications_created} classement(s) créé(s), "
+                f"dossier dynamique créé : {dynamic_folder_created}."
             )
         )

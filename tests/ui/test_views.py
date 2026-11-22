@@ -59,6 +59,33 @@ def test_object_browse_filters_by_dossier(client, demo_context, demo_commande, d
     assert b"hors-dossier" not in response.content
 
 
+def test_object_browse_dynamic_dossier_filters_by_query_and_updates_both_ways(
+    client, demo_context, demo_commande, demo_user, demo_folder_type
+):
+    from engine.services.update import update_object
+
+    space, layer, document_type = demo_context
+    agent_made = create_object(
+        space, demo_commande.base_type, {"name": "exigence-agent"}, agent_name="qwen2.5:1.5b"
+    )
+    assert agent_made.current_version.validated is False  # créé par l'agent, pas encore relu
+
+    folder = create_object(
+        space, demo_folder_type, {"name": "dynamique", "query": {"validated": False}}, author=demo_user
+    )
+
+    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+    assert b"exigence-agent" in response.content
+    assert b"commande" not in response.content
+
+    # Un humain réenregistre l'objet : validated passe à True, il sort du dossier
+    # dynamique sans aucun changement de Link.
+    update_object(agent_made.id, agent_made.current_version.number, agent_made.current_version.attributes, author=demo_user)
+
+    response = client.get(reverse("object-browse"), {"dossier": str(folder.id)})
+    assert b"exigence-agent" not in response.content
+
+
 def test_object_browse_lists_objects_and_links(client, demo_context):
     client.post(reverse("import-object"), {"files": SimpleUploadedFile("a.md", b"a")})
     client.post(reverse("import-object"), {"files": SimpleUploadedFile("b.md", b"b")})

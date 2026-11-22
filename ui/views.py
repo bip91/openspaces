@@ -99,9 +99,16 @@ def object_browse(request):
 
     selected_dossier = request.GET.get("dossier", "")
     if selected_dossier:
-        objects = objects.filter(
-            links_from__nature=FOLDER_LINK_NATURE, links_from__target_id=selected_dossier
-        )
+        dossier_object = Object.objects.filter(pk=selected_dossier).select_related("current_version").first()
+        query = dossier_object.current_version.attributes.get("query") if dossier_object else None
+        if query:
+            # Dossier dynamique : l'appartenance est calculée (égalité sur des
+            # champs de Version), pas posée par un Link — « déplacer » un objet
+            # hors de ce dossier revient alors à changer l'attribut concerné
+            # (ex. update_object valide une Version, donc validated devient True).
+            objects = objects.filter(**{f"current_version__{field}": value for field, value in query.items()})
+        else:
+            objects = objects.filter(links_from__nature=FOLDER_LINK_NATURE, links_from__target_id=selected_dossier)
 
     objects = objects.order_by("base_type__name", "-created_at")
 

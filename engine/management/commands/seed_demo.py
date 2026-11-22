@@ -170,11 +170,23 @@ class Command(BaseCommand):
         )
 
         # Dossier : classement multi-valué (Object + Link), pas un sous-espace — voir
-        # CLAUDE.md (glossaire) et docs/spec.md (B10).
-        folder_type, folder_type_created = ObjectType.objects.get_or_create(
+        # CLAUDE.md (glossaire) et docs/spec.md (B10). `query` (facultatif) en fait un
+        # dossier dynamique : appartenance calculée (égalité sur des champs de
+        # Version), pas posée par un Link — voir ui/views.py::object_browse.
+        # update_or_create (pas get_or_create) : le schéma a évolué (ajout de `query`).
+        folder_type, folder_type_created = ObjectType.objects.update_or_create(
             name=DEMO_FOLDER_TYPE_NAME,
             scope=ObjectType.Scope.BASE,
-            defaults={"schema": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string"}}}},
+            defaults={
+                "schema": {
+                    "type": "object",
+                    "required": ["name"],
+                    "properties": {
+                        "name": {"type": "string"},
+                        "query": {"type": "object"},
+                    },
+                }
+            },
         )
 
         folder_created = False
