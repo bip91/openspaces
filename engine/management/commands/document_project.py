@@ -102,6 +102,17 @@ DECISIONS = [
             "d'info/action ponctuels, pas les outils système lourds."
         ),
     },
+    {
+        "name": "Système est un espace de plus, pas une section à part",
+        "justification": (
+            "Affine la décision précédente : plutôt qu'une section d'icônes "
+            "codée en dur pour Objets/Liens/Bus/Paramètres, Système rejoint la "
+            "liste des espaces (sans activité, sans sélection, sans dossier), "
+            "et ses fonctions passent par le même menu clic-droit (CommandMenu) "
+            "que n'importe quel espace. Un seul pattern pour tout (« espace + "
+            "menu contextuel »), pas deux à maintenir en parallèle."
+        ),
+    },
 ]
 
 # Prototypes d'interaction réels (voir prototypes/), jetables côté code mais
