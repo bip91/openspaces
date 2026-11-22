@@ -21,6 +21,36 @@
 
   $: activeObjects = objects.filter((o) => o.spaceId === activeSpaceId);
 
+  // --- Menu radial des verbes universels (clic droit sur un objet) ---
+  // Sept verbes : la taille où un menu radial reste lisible (spec : « sept ou
+  // huit verbes universels »). Pas de « créer » ici — on agit sur un objet
+  // déjà là, pas sur du vide.
+  const VERBS = ["Voir", "Modifier", "Lier", "Classer", "Typer", "Décider", "Historique"];
+  let radialMenu = null; // { x, y, objectName } | null
+  let lastAction = "";
+
+  function sliceOffset(index, total, radius = 76) {
+    const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+    return { dx: Math.cos(angle) * radius, dy: Math.sin(angle) * radius };
+  }
+
+  function openRadialMenu(event, objectName) {
+    event.preventDefault();
+    radialMenu = { x: event.clientX, y: event.clientY, objectName };
+  }
+
+  function closeRadialMenu() {
+    radialMenu = null;
+  }
+
+  function chooseVerb(verb) {
+    lastAction = `${verb} — ${radialMenu.objectName}`;
+    closeRadialMenu();
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (lastAction = ""), 2200);
+  }
+  let toastTimer;
+
   const linkLines = [
     "délai obligatoire --correspondence--> commande",
     "commande --classification--> classeur-démo",
@@ -216,12 +246,16 @@
           </header>
           <div class="body">
             {#if win.id === "objets"}
-              <p class="hint">Glisse une carte sur une bulle d'espace pour la déplacer.</p>
+              <p class="hint">
+                Glisse une carte sur une bulle d'espace pour la déplacer. Clic
+                droit pour le menu des verbes.
+              </p>
               {#each activeObjects as object (object.id)}
                 <div
                   class="object-card"
                   draggable="true"
                   on:dragstart={(e) => onObjectDragStart(e, object.id)}
+                  on:contextmenu={(e) => openRadialMenu(e, object.name)}
                 >
                   {object.name}
                 </div>
@@ -252,6 +286,36 @@
     </nav>
   </main>
 </div>
+
+{#if radialMenu}
+  <div
+    class="radial-overlay"
+    role="button"
+    tabindex="0"
+    aria-label="Fermer le menu"
+    on:click={closeRadialMenu}
+    on:contextmenu|preventDefault={closeRadialMenu}
+    on:keydown={(e) => e.key === "Escape" && closeRadialMenu()}
+  >
+    <div class="radial-menu" style="left:{radialMenu.x}px; top:{radialMenu.y}px">
+      <div class="radial-center">{radialMenu.objectName}</div>
+      {#each VERBS as verb, i}
+        {@const offset = sliceOffset(i, VERBS.length)}
+        <button
+          class="radial-slice"
+          style="transform: translate({offset.dx}px, {offset.dy}px) translate(-50%, -50%)"
+          on:click|stopPropagation={() => chooseVerb(verb)}
+        >
+          {verb}
+        </button>
+      {/each}
+    </div>
+  </div>
+{/if}
+
+{#if lastAction}
+  <div class="toast">{lastAction}</div>
+{/if}
 
 <style>
   :global(body) {
@@ -418,5 +482,72 @@
     background: #2563eb;
     border-color: #2563eb;
     color: #fff;
+  }
+
+  .radial-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .radial-menu {
+    position: absolute;
+    width: 0;
+    height: 0;
+  }
+
+  .radial-center {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #1f2937;
+    color: #fff;
+    font-size: 0.65rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.2rem;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  }
+
+  .radial-slice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 64px;
+    height: 40px;
+    border-radius: 20px;
+    border: 1px solid #ddd;
+    background: #fff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
+    transition: background 0.08s ease, color 0.08s ease;
+  }
+  .radial-slice:hover {
+    background: #2563eb;
+    color: #fff;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 70px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    z-index: 1100;
   }
 </style>
