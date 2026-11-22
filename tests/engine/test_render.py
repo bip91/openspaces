@@ -7,6 +7,46 @@ from engine.services.link import link_objects
 from engine.services.render import apply_view_edit, render_view
 
 
+def test_render_view_requirement_diagram_maps_links_to_mermaid_verbs(space, table_type, user, exigence_type):
+    table = create_object(space, table_type, {"name": "commande"}, author=user)
+    exigence = create_object(space, exigence_type, {"name": "délai obligatoire"}, author=user)
+    link_objects("correspondence", exigence, table, author=user)
+    view_template = ViewTemplate.objects.create(
+        name="exigence-requirement",
+        applies_to=exigence_type,
+        kind=ViewTemplate.Kind.STRUCTURED,
+        renderer="requirementDiagram",
+    )
+
+    result = render_view(exigence, view_template)
+
+    assert "requirementDiagram" in result["text"]
+    assert 'text: "délai obligatoire"' in result["text"]
+    assert "element commande" in result["text"]
+    # "correspondence" n'est pas un verbe Mermaid valide : repli sur "satisfies".
+    assert "commande - satisfies -> d_lai_obligatoire" in result["text"]
+
+
+def test_render_view_flowchart_links_steps_with_labelled_edges(space, table_type, user):
+    use_case = create_object(
+        space,
+        table_type,
+        {"name": "cas-usage-demo", "steps": [{"from": "client", "to": "adv", "message": "demande un devis"}]},
+        author=user,
+    )
+    view_template = ViewTemplate.objects.create(
+        name="cas-usage-flow",
+        applies_to=table_type,
+        kind=ViewTemplate.Kind.STRUCTURED,
+        renderer="mermaid.flowchart",
+    )
+
+    result = render_view(use_case, view_template)
+
+    assert "flowchart LR" in result["text"]
+    assert 'client["client"] -->|demande un devis| adv["adv"]' in result["text"]
+
+
 def test_render_view_sequence_diagram_lists_participants_and_steps(space, table_type, user):
     use_case = create_object(
         space,

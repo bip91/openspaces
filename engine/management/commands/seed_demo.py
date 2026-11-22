@@ -18,7 +18,9 @@ from ui.demo import (
     DEMO_TYPE_NAME,
     DEMO_USE_CASE_TYPE_NAME,
     DEMO_USERNAME,
+    EXIGENCE_REQUIREMENT_VIEW_NAME,
     FOLDER_LINK_NATURE,
+    USE_CASE_FLOW_VIEW_NAME,
     USE_CASE_SEQUENCE_VIEW_NAME,
 )
 
@@ -244,6 +246,21 @@ class Command(BaseCommand):
             defaults={"kind": ViewTemplate.Kind.STRUCTURED, "renderer": "mermaid.sequenceDiagram", "editable": False},
         )
 
+        # Même modèle (steps / liens), deux vues : sequence pour un dialogue entre
+        # acteurs (ADV), flowchart pour un pipeline à sens unique (Architecte produit,
+        # Architecture SI, Directeur) — B4, même objet sous plusieurs formes.
+        _, use_case_flow_view_created = ViewTemplate.objects.get_or_create(
+            name=USE_CASE_FLOW_VIEW_NAME,
+            applies_to=use_case_type,
+            defaults={"kind": ViewTemplate.Kind.STRUCTURED, "renderer": "mermaid.flowchart", "editable": False},
+        )
+
+        _, exigence_requirement_view_created = ViewTemplate.objects.get_or_create(
+            name=EXIGENCE_REQUIREMENT_VIEW_NAME,
+            applies_to=exigence_type,
+            defaults={"kind": ViewTemplate.Kind.STRUCTURED, "renderer": "requirementDiagram", "editable": False},
+        )
+
         created = [
             name
             for name, was_created in (
@@ -264,6 +281,8 @@ class Command(BaseCommand):
                 ("type Décision", decision_type_created),
                 ("type Cas d'usage", use_case_type_created),
                 ("gabarit cas-usage-sequence", use_case_view_created),
+                ("gabarit cas-usage-flow", use_case_flow_view_created),
+                ("gabarit exigence-requirement", exigence_requirement_view_created),
             )
             if was_created
         ]

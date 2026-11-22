@@ -5,12 +5,28 @@ des attributs ailleurs, pour ne pas fermer la porte à un filtrage par objet/att
 lors d'un futur partage (voir CLAUDE.md, section Sécurité).
 """
 
+import re
+
 from engine.models import Link, Object, ViewTemplate
 from engine.services.update import update_object
+
+# Verbes de relation acceptés par le requirementDiagram de Mermaid (vérifié dans
+# ui/static/ui/vendor/mermaid.min.js) : une nature de Link qui n'en fait pas partie
+# (ex. "correspondence") retombe sur "satisfies", plutôt que de produire une syntaxe
+# invalide.
+_MERMAID_REQUIREMENT_VERBS = {
+    "contains", "copies", "derives", "docref", "refines", "satisfies", "traces", "verifies",
+}
 
 
 def effective_view_templates(object_type):
     return ViewTemplate.objects.filter(applies_to=object_type)
+
+
+def _mermaid_id(value):
+    """Identifiant Mermaid sûr : un nom avec espace ou apostrophe casse la syntaxe
+    (même précaution que pour erDiagram, voir plus bas)."""
+    return re.sub(r"[^A-Za-z0-9_]", "_", value or "")
 
 
 def _mermaid_entity_block(name, fields):
@@ -71,6 +87,32 @@ def render_view(object, view_template):
         lines = ["erDiagram"]
         lines += _mermaid_entity_block(name, fields)
         lines += _mermaid_relationships(object, name)
+        return {"text": "\n".join(lines)}
+
+    if view_template.renderer == "requirementDiagram":
+        name = attributes.get("name", "exigence")
+        req_id = _mermaid_id(name)
+        lines = ["requirementDiagram", f"    requirement {req_id} {{", f'        id: "{req_id}"', f'        text: "{name}"', "    }"]
+        seen = set()
+        for link in Link.objects.filter(source=object).select_related("target__current_version", "target__base_type"):
+            target_attributes = link.target.current_version.attributes
+            target_name = target_attributes.get("name", "element")
+            target_id = _mermaid_id(target_name)
+            verb = link.nature if link.nature in _MERMAID_REQUIREMENT_VERBS else "satisfies"
+            if link.target_id not in seen:
+                lines.append(f"    element {target_id} {{")
+                lines.append(f'        type: "{link.target.base_type.name}"')
+                lines.append("    }")
+                seen.add(link.target_id)
+            lines.append(f"    {target_id} - {verb} -> {req_id}")
+        return {"text": "\n".join(lines)}
+
+    if view_template.renderer == "mermaid.flowchart":
+        steps = attributes.get("steps", [])
+        lines = ["flowchart LR"]
+        for step in steps:
+            from_id, to_id = _mermaid_id(step["from"]), _mermaid_id(step["to"])
+            lines.append(f'    {from_id}["{step["from"]}"] -->|{step["message"]}| {to_id}["{step["to"]}"]')
         return {"text": "\n".join(lines)}
 
     if view_template.renderer == "mermaid.sequenceDiagram":

@@ -23,6 +23,8 @@ FOLDER_LINK_NATURE = "classification"
 DEMO_DECISION_TYPE_NAME = "Décision"
 DEMO_USE_CASE_TYPE_NAME = "Cas d'usage"
 USE_CASE_SEQUENCE_VIEW_NAME = "cas-usage-sequence"
+USE_CASE_FLOW_VIEW_NAME = "cas-usage-flow"
+EXIGENCE_REQUIREMENT_VIEW_NAME = "exigence-requirement"
 
 
 def demo_context():
