@@ -48,6 +48,8 @@
     <button type="button" class="edit-placeholder" disabled title="Barre d'édition par type — pas encore construite">Éditer</button>
   </form>
 
+  <hr class="sep">
+
   {% if views|length > 1 %}
     <nav class="view-tabs">
       {% for v in views %}
@@ -78,6 +80,8 @@
       {% endif %}
     </div>
   {% endif %}
+
+  <hr class="sep">
 
   <h2>Liens</h2>
   {% for link in links_out %}

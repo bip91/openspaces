@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
@@ -156,22 +157,47 @@ def _browse_queryset(space, selected_type, selected_dossier):
     return objects.order_by("base_type__name", "-created_at")
 
 
-@require_GET
-def object_browse(request):
-    space, layer, document_type, user = demo_context()
+def _tree_context(space):
     folder_type = ObjectType.objects.filter(name=DEMO_FOLDER_TYPE_NAME, scope=ObjectType.Scope.BASE).first()
     dossiers = _dossier_tree(space, folder_type) if folder_type else []
     types = ObjectType.objects.filter(scope=ObjectType.Scope.BASE).order_by("name")
+    return {"types": types, "dossiers": dossiers}
 
+
+def _is_htmx(request):
+    return request.headers.get("HX-Request") == "true"
+
+
+def _browse_shell_response(request, space, content_template, content_context, content_url):
+    """Rend la coquille complète (arbre + panneau) avec ce contenu déjà
+    inséré, pour toute visite qui n'est pas un échange htmx — rechargement,
+    retour/suivant du navigateur, ouverture dans un nouvel onglet. Sans ça,
+    les URL poussées par hx-push-url pour le contenu/l'aperçu (qui ne
+    rendent normalement qu'un fragment, pas la page) renvoient un fragment
+    nu si on y accède directement : l'arbre disparaît — pas un style
+    manquant, une vraie page cassée."""
+    context = {"space": space, **_tree_context(space)}
+    context["selected_type"] = content_context.get("selected_type", "")
+    context["selected_dossier"] = content_context.get("selected_dossier", "")
+    context["initial_body"] = render_to_string(content_template, content_context, request=request)
+    context["content_url"] = content_url
+    return render(request, "ui/object_browse.html", context)
+
+
+@require_GET
+def object_browse(request):
+    space, layer, document_type, user = demo_context()
+    selected_type = request.GET.get("type", "")
+    selected_dossier = request.GET.get("dossier", "")
     return render(
         request,
         "ui/object_browse.html",
         {
             "space": space,
-            "types": types,
-            "dossiers": dossiers,
-            "selected_type": request.GET.get("type", ""),
-            "selected_dossier": request.GET.get("dossier", ""),
+            **_tree_context(space),
+            "selected_type": selected_type,
+            "selected_dossier": selected_dossier,
+            "content_url": f"{reverse('object-content')}?{urlencode({'type': selected_type, 'dossier': selected_dossier})}",
         },
     )
 
@@ -191,16 +217,17 @@ def object_content(request):
         dossier_object = Object.objects.filter(pk=selected_dossier).select_related("current_version").first()
         dossier_name = dossier_object.current_version.attributes.get("name", "") if dossier_object else ""
 
-    return render(
-        request,
-        "ui/_object_content.html",
-        {
-            "objects": objects,
-            "selected_type": selected_type,
-            "selected_dossier": selected_dossier,
-            "dossier_name": dossier_name,
-        },
-    )
+    content_context = {
+        "objects": objects,
+        "selected_type": selected_type,
+        "selected_dossier": selected_dossier,
+        "dossier_name": dossier_name,
+    }
+    if _is_htmx(request):
+        return render(request, "ui/_object_content.html", content_context)
+
+    content_url = f"{reverse('object-content')}?{urlencode({'type': selected_type, 'dossier': selected_dossier})}"
+    return _browse_shell_response(request, space, "ui/_object_content.html", content_context, content_url)
 
 
 def _applicable_views(obj, selected_view_id):
@@ -253,23 +280,27 @@ def object_preview(request, object_id):
     links_out = list(obj.links_from.select_related("target__current_version", "layer").order_by("-created_at"))
     links_in = list(obj.links_to.select_related("source__current_version", "layer").order_by("-created_at"))
 
-    return render(
-        request,
-        "ui/_object_preview.html",
-        {
-            "object": obj,
-            "views": views,
-            "selected_view": selected_view,
-            "links_out": links_out,
-            "links_in": links_in,
-            "classifiable_dossiers": classifiable_dossiers,
-            "selected_type": selected_type,
-            "selected_dossier": selected_dossier,
-            "prev_id": prev_id,
-            "next_id": next_id,
-            "message": request.GET.get("message", ""),
-        },
-    )
+    preview_context = {
+        "object": obj,
+        "views": views,
+        "selected_view": selected_view,
+        "links_out": links_out,
+        "links_in": links_in,
+        "classifiable_dossiers": classifiable_dossiers,
+        "selected_type": selected_type,
+        "selected_dossier": selected_dossier,
+        "prev_id": prev_id,
+        "next_id": next_id,
+        "message": request.GET.get("message", ""),
+    }
+    if _is_htmx(request):
+        return render(request, "ui/_object_preview.html", preview_context)
+
+    params = {"type": selected_type, "dossier": selected_dossier}
+    if request.GET.get("view"):
+        params["view"] = request.GET["view"]
+    content_url = f"{reverse('object-preview', args=[obj.id])}?{urlencode(params)}"
+    return _browse_shell_response(request, space, "ui/_object_preview.html", preview_context, content_url)
 
 
 @require_POST
